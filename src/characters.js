@@ -1,0 +1,35 @@
+
+export const LF            = 10;
+export const CR            = 13;
+export const SPACE         = 32;
+export const BANG          = 33;  // !
+export const DOUBLEQUOT    = 34;  // "
+export const HASH          = 35;  // #
+export const DOLLAR        = 36;  // $
+export const PERCENT       = 37;  // %
+export const AMP           = 38;  // &
+export const QUOT          = 39;  // '
+export const PAREN_OPEN    = 40;  // (
+export const PAREN_CLOSE   = 41;  // )
+export const STAR          = 42;  // *
+export const PLUS          = 43;  // +
+export const COMMA         = 44;  // ,
+export const MINUS         = 45;  // -
+export const PERIOD        = 46;  // .
+export const SLASH         = 47;  // /
+export const COLON         = 58;  // :
+export const LT            = 60;  // <
+export const EQUAL         = 61;  // =
+export const GT            = 62;  // >
+export const QUESTION      = 63;  // ?
+export const AT            = 64;  // @
+export const BRACKET_OPEN  = 91;  // [
+export const BRACKET_CLOSE = 93;  // ]
+export const BACKSLASH     = 92;  // \
+export const CARET         = 94;  // ^
+export const UNDERSCORE    = 95;  // _
+export const CURL_OPEN     = 123; // {
+export const PIPE          = 124; // |
+export const CURL_CLOSE    = 125; // }
+export const TILDE         = 126; // ~
+export const NBSP          = 160;
