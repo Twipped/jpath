@@ -30,7 +30,6 @@ function randomItem (items) {
 export const DEFAULT_OPERATORS = {
   '*':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? items.push(...values(item)) : items), []) ],
   '~':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? items.push(...keys(item)) : items), []) ],
-  '!':        [ 1, (set) => (set.filter(falsey).length ? [] : [ true ]) ],
 
   '===':      [ 0, ([ a ], [ b ]) => [ a === b ] ],
   '==':       [ 0, ([ a ], [ b ]) => [ a ==  b ] ], // eslint-disable-line eqeqeq
@@ -46,6 +45,8 @@ export const DEFAULT_OPERATORS = {
   '&&':       [ 0, (seta, setb) => (seta.filter(truthy).length ? setb : seta) ],
   '||':       [ 0, (seta, setb) => (seta.filter(truthy).length ? seta : setb) ],
   '??':       [ 0, (seta, setb) => ( seta.length ? seta : setb ) ],
+
+  '!':        [ -1, (set) => (set.filter(falsey).length ? [] : [ true ]) ],
 
   is:    [ 0, (seta, setb) => {
     const m = intersect(seta, setb).length;

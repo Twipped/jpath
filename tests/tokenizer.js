@@ -99,7 +99,7 @@ tap.test('tokenize 1', (t) => {
 });
 
 
-tap.test('tokenize 1', (t) => {
+tap.test('tokenize $..book[(@.length-1)]', (t) => {
   const result = tokenize('$..book[(@.length-1)]', { operators: DEFAULT_OPERATORS }).readAll();
 
   t.same(deline(result), [
@@ -115,6 +115,19 @@ tap.test('tokenize 1', (t) => {
     LITERAL_NUM(1),
     PAREN_CLOSE(),
     BRACKET_CLOSE(),
+  ]);
+  t.end();
+});
+
+tap.test('tokenize avg $..price', (t) => {
+  const result = tokenize('avg $..price', { operators: DEFAULT_OPERATORS }).readAll();
+
+  t.same(deline(result), [
+    OPERATOR('avg'),
+    WHITESPACE(),
+    ROOT(),
+    RECURSE(),
+    IDENTIFIER('price'),
   ]);
   t.end();
 });

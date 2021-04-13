@@ -36,7 +36,12 @@ import {
   Operand,
 } from './taxonomy.js';
 
-
+const E_UNEXPECTED_EOL = 'E_UNEXPECTED_EOL';
+const E_BAD_OPERATOR = 'E_BAD_OPERATOR';
+const E_BAD_TOKEN = 'E_BAD_TOKEN';
+const E_THATS_A_BUG = 'E_THATS_A_BUG';
+const E_BAD_OPERATOR_FUNCTION = 'E_BAD_OPERATOR_FUNCTION';
+const E_UNEXPECTED_CLOSE = 'E_UNEXPECTED_CLOSE';
 
 export default function lex (tokens, { operators, debug } = {}) {
   let tok, contents;
@@ -65,7 +70,7 @@ export default function lex (tokens, { operators, debug } = {}) {
     const t = tokens.peek();
     if (!t) return false;
     if (type !== null && t.type !== type) {
-      if (required) wtf(isString(required) ? required : `Expected ${type} but found ${T[t.type]}`, t);
+      if (required) wtf(isString(required) ? required : `Expected ${type} but found ${T[t.type]}`);
       return false;
     }
     contents = t.contents;
@@ -81,7 +86,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
 
   const err = new SyntaxError();
-  function wtf (msg = 'Unexpected token: ' + T[tok.type], { line, column, ...extra } = tok || {}) {
+  function wtf (msg = 'Unexpected token: ' + T[tok.type], { code = E_BAD_TOKEN, line, column, ...extra } = tok || {}) {
     msg += (line ? ` (${line}:${column})` : '');
     if (debug) msg += `[Token ${tindex}]`;
     let e = err;
@@ -91,6 +96,9 @@ export default function lex (tokens, { operators, debug } = {}) {
     } else {
       err.message = msg;
     }
+    e.code = code;
+    e.token = tok;
+    e.next = tokens.peek(1);
     throw Object.assign(e, extra);
   }
 
@@ -120,15 +128,13 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         if (next(T_BRACKET_OPEN)) {
           if (next(T_FILTER)) {
-            if (next(T_PAREN_OPEN)) {
-              if (recurse) {
-                statement.push(new Recursive(new Descend(new Filter(scanStatement('filter')))));
-              } else {
-                statement.push(new Descend(new Filter(scanStatement('filter'))));
-              }
-              continue;
+            next(T_PAREN_OPEN, true);
+            if (recurse) {
+              statement.push(new Recursive(new Descend(new Filter(scanStatement('filter')))));
+            } else {
+              statement.push(new Descend(new Filter(scanStatement('filter'))));
             }
-            wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
+            continue;
           }
 
           if (recurse) {
@@ -160,7 +166,7 @@ export default function lex (tokens, { operators, debug } = {}) {
               continue;
             }
 
-            wtf(`Unexpected operator, "${contents}". Only postfix operators may be used in a statement chain`);
+            wtf(`Unexpected operator, "${contents}". Only postfix operators may be used in a statement chain`, { code: E_BAD_OPERATOR });
           }
 
           statement.push(new Node(contents));
@@ -175,12 +181,21 @@ export default function lex (tokens, { operators, debug } = {}) {
           wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
         }
 
+        if (next(T_TARGET)) {
+          // if the target isn't at the start of the statement, it isn't a target.
+          statement.push(new Node(contents));
+          continue;
+        }
+
         wtf(`Unexpected ${T[peek().type]} following a ${T[tok.type]}`);
       }
 
       if (isTarget()) {
-        // targets are always the start of a statement, so lets reset it.
-        statement.reset();
+        if (statement.length) {
+          // if the target isn't at the start of the statement, it isn't a target.
+          statement.push(new Descend(contents));
+          continue;
+        }
 
         const Target = {
           '$': Root,
@@ -213,20 +228,31 @@ export default function lex (tokens, { operators, debug } = {}) {
           continue;
         }
 
+        if (!peek()) {
+          wtf(`Unexpected end of path following a "${contents}" operator.`, { code: E_UNEXPECTED_EOL });
+        }
+
+        if (peek(T_BRACKET_CLOSE) || peek(T_PAREN_CLOSE)) {
+          wtf(`Unexpected end of substatement (${T[peek().type]}) following a "${contents}" operator.`, { code: E_UNEXPECTED_EOL });
+        }
+
         if (peek(T_UNION) || peek(T_SLICE) || peek(T_CHILD) || peek(T_RECURSE)) {
-          wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a "${contents}" operator.`);
+          wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a "${contents}" operator.`, { code: E_BAD_OPERATOR });
         }
 
         if (peek(T_OPERATOR)) {
           const [ nopType ] = operators[peek().contents] || [];
           if (nopType !== -1) {
-            wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a "${contents}" operator.`);
+            wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a "${contents}" operator.`, { code: E_BAD_OPERATOR });
           }
         }
 
         // infix binary
         if (opType === 0) {
           const o = new Operand(contents, fn);
+          if (!statement.length) {
+            wtf(`Unexpected operator, "${contents}". Only prefix operators may be used at the start of a statement`, { code: E_BAD_OPERATOR });
+          }
           const s = statement;
           statement = new Statement;
           if (operand) {
@@ -254,15 +280,16 @@ export default function lex (tokens, { operators, debug } = {}) {
               operand.right = o;
             } else {
               operand = o;
-              wtf('How did we get a prefix operator on the left hand side of a parent operator?');
+              wtf('How did we get a prefix operator on the left hand side of a parent operator?', { code: E_THATS_A_BUG });
             }
+          } else {
+            operand = o;
           }
           o.right = statement = new Statement;
-
           continue;
         }
 
-        wtf(`Operator function for "${contents}" takes an unsupported number of arguments.`);
+        wtf(`Operator function for "${contents}" provided an unsupported arity: "${opType}"`, { code: E_BAD_OPERATOR_FUNCTION });
       }
 
       if (isSlice()) {
@@ -289,6 +316,14 @@ export default function lex (tokens, { operators, debug } = {}) {
           continue;
         }
         wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
+      }
+
+      if (isBracketClose() && statementType !== 'substatement') {
+        wtf('Unmatched closing bracket.', { code: E_UNEXPECTED_CLOSE });
+      }
+
+      if (isParenClose() && statementType !== 'filter' && statementType !== 'script') {
+        wtf('Unmatched closing parenthesis.', { code: E_UNEXPECTED_CLOSE });
       }
 
       if (isBracketClose() || isParenClose()) {
@@ -325,7 +360,7 @@ export default function lex (tokens, { operators, debug } = {}) {
           if (statementType === 'substatement' && statement.units[0] instanceof Literal) return statement.units[0].value;
           return statement.units[0];
         }
-        if (statement.length === 0) wtf('Unexpected end of statement (statement is empty).');
+        if (statement.length === 0) wtf('Unexpected end of statement (statement is empty).', { code: E_UNEXPECTED_CLOSE });
         return statement;
       }
 
@@ -347,7 +382,7 @@ export default function lex (tokens, { operators, debug } = {}) {
       wtf(`Unexpected token while processing statement: "${tok.contents}" (${T[tok.type]})`);
     }
 
-    if (statementType !== 'root') wtf('Unexpected end of path, unclosed substatement.');
+    if (statementType !== 'root') wtf('Unexpected end of path, unclosed substatement.', { code: E_UNEXPECTED_EOL });
 
     if (operand) {
       if (operand.left instanceof Statement && operand.left.length === 1) {
@@ -379,14 +414,14 @@ export default function lex (tokens, { operators, debug } = {}) {
       return slice;
     }
     if (statement.length === 1) return statement.units[0];
-    if (statement.length === 0) wtf('Unexpected end of statement (statement is empty).');
+    if (statement.length === 0) wtf('Unexpected end of statement (statement is empty).', { code: E_UNEXPECTED_EOL });
     return statement;
   }
 
   const result = scanStatement('root');
   if (!tokens.eof) {
     console.error({ remaining: tokens.remaining() }); // eslint-disable-line no-console
-    wtf('There are still tokens left, how did we get here?');
+    wtf('There are still tokens left, how did we get here?', { code: E_THATS_A_BUG });
   }
   return result;
 }

@@ -153,6 +153,31 @@ const testcases = {
       ),
     ),
   ]),
+
+  'store* $ book': new Statement([
+    new Descend('store'),
+    new Operand('*', OPS['*'][1]),
+    new Descend('$'),
+    new Descend('book'),
+  ]),
+
+  'store.*.$.book': new Statement([
+    new Descend('store'),
+    new Operand('*', OPS['*'][1]),
+    new Descend('$'),
+    new Descend('book'),
+  ]),
+
+  'avg $..price': new Operand(
+    'avg',
+    OPS.avg[1],
+    null,
+    new Statement([
+      new Root(),
+      new Recursive('price'),
+    ]),
+  ),
+
 };
 
 for (const [ path, expected ] of Object.entries(testcases)) {
@@ -162,6 +187,22 @@ for (const [ path, expected ] of Object.entries(testcases)) {
     const result = parse(path, { debug: true });
     // log(result, expected);
     t.same(result, expected, path);
+    t.end();
+
+  });
+
+}
+
+const failures = {
+  'in 5': { code: 'E_BAD_OPERATOR' },
+  '5 in ': { code: 'E_UNEXPECTED_EOL' },
+};
+
+for (const [ path, expected ] of Object.entries(failures)) {
+
+  tap.test(path, (t) => {
+
+    t.throws(() => parse(path), expected);
     t.end();
 
   });

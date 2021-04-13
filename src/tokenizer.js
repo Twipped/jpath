@@ -335,7 +335,6 @@ export default function tokenizer (input, { operators = {} } = {}) {
   function read () {
     if (eof()) return false;
     for (const r of read.order) {
-      // console.log(r, pos);
       if (r()) return true;
     }
     wtf(`Unknown token: ${input.substr(pos, 20)}…`);
@@ -381,11 +380,13 @@ export default function tokenizer (input, { operators = {} } = {}) {
     next () {
       tindex++;
       while (tindex >= tokens.length && !eof()) read();
+      if (tokens[tindex] && tokens[tindex].type === T_WHITESPACE) return this.next();
       return tokens[tindex];
     },
     peek (delta = 1) {
       const idx = tindex + delta;
       while (idx >= tokens.length && !eof()) read();
+      if (tokens[idx] && tokens[idx].type === T_WHITESPACE) return this.peek(delta + 1);
       return tokens[idx];
     },
 
