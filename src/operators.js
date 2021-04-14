@@ -18,7 +18,7 @@ import {
   isMappable,
   truthy,
   falsey,
-} from '@twipped/utils';
+} from './utils/index.js';
 
 function randomItem (items) {
   if (isArray(items)) return () => items[ ~~(Math.random() * items.length) ];

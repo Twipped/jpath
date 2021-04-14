@@ -10,10 +10,9 @@ import {
   isNumber,
   isFunction,
   map,
-  entries,
   keys,
   truthy,
-} from '@twipped/utils';
+} from './utils/index.js';
 
 function ensureArray (input) {
   return (isArray(input) ? input : [ input ]).filter(isNotUndefinedOrNull);
