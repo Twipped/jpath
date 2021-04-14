@@ -117,7 +117,8 @@ export default function lex (tokens, { operators, debug } = {}) {
       }
 
       if (isLiteral()) {
-        statement.push(new Literal(contents));
+        if (isLiteralNum()) statement.push(new Literal(Number(contents)));
+        else statement.push(new Literal(contents));
         continue;
       }
 
