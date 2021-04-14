@@ -148,7 +148,7 @@ export default function lex (tokens, { operators, debug } = {}) {
           if (tok.symbol) {
             const [ opType, fn ] = operators[contents];
             if (opType === 1) {
-              statement.push(new Recursive(new Operand(contents, fn )));
+              statement.push(new Recursive(new Operand(contents, opType, fn)));
               continue;
             }
 
@@ -209,7 +209,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         // postfix unary
         if (opType === 1) {
-          statement.push(new Operand(contents, fn ));
+          statement.push(new Operand(contents, opType, fn));
           continue;
         }
 
@@ -234,7 +234,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         // infix binary
         if (opType === 0) {
-          const o = new Operand(contents, fn);
+          const o = new Operand(contents, opType, fn);
           if (!statement.length) {
             wtf(`Unexpected operator, "${contents}". Only prefix operators may be used at the start of a statement`, { code: E_BAD_OPERATOR });
           }
@@ -254,7 +254,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         // prefix unary
         if (opType === -1) {
-          const o = new Operand(contents, fn);
+          const o = new Operand(contents, opType, fn);
           // with a prefix operator we're ignoring everything before the operator,
           // so lets just ditch the current statement.
 

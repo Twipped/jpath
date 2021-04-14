@@ -380,49 +380,46 @@ export class Filter extends Unit {
 
 export class Operand extends Unit {
 
-  constructor (operator = null, fn = null, left = null, right = null) {
-    super({ operator, fn, left, right });
+  constructor (operator = null, arity, fn = null, left = null, right = null) {
+    super({ operator, arity, fn, left, right });
   }
 
   build () {
-    let { operator, fn, left, right } = this;
+    let { operator, arity, fn, left, right } = this;
     if (!fn) throw new Error(`"${operator}" is not a recognized operator.`);
 
-    if (left === null && right === null) {
-      return named(`Operand[${operator}]`,
-        ({ current }) => ensureArray(fn(current)),
-      );
-    }
-
-    if (left) {
-      if (left instanceof Unit) left = left.build();
-      else badUnit('Operand', left, 'left of the "' + operator + '" operator.');
-    }
-
-    if (right) {
-      if (right instanceof Unit) right = right.build();
-      else badUnit('Operand', right, 'right of the "' + operator + '" operator.');
-    }
-
-    if (left && right) {
-      return named(`Operand[${operator}|=]`,
-        (props) => ensureArray(fn(left(props), right(props))),
-      );
-    }
-
-    if (right && !left) {
+    switch (arity) {
+    case -1:
+      if (!(right instanceof Unit)) badUnit('Operand', right, 'right of the "' + operator + '" operator.');
+      right = right.build();
       return named(`Operand[${operator}|>]`,
         (props) => ensureArray(fn(right(props))),
       );
-    }
 
-    if (left && !right) {
-      // the lexer shouldn't produce this, but lets just cover our bases
-      return named(`Operand[${operator}|<]`,
-        (props) => ensureArray(fn(left(props))),
+
+    case  0:
+      if (!(left instanceof Unit)) badUnit('Operand', left, 'left of the "' + operator + '" operator.');
+      if (!(right instanceof Unit)) badUnit('Operand', right, 'right of the "' + operator + '" operator.');
+
+      left = left.build();
+      right = right.build();
+
+      return named(`Operand[${operator}|=]`,
+        (props) => ensureArray(fn(left(props), right(props))),
       );
+
+
+    case  1:
+      return named(`Operand[${operator}]`,
+        ({ current }) => ensureArray(fn(current)),
+      );
+
+    default:
+      throw new TypeError(`Unrecognized operand arity: "${arity}"`);
+
     }
   }
+
 }
 
 function badUnit (source, unit, target = '') {

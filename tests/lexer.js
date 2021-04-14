@@ -36,7 +36,7 @@ const testcases = {
     new Root(),
     new Descend('store'),
     new Descend('book'),
-    new Descend(new Operand('*', OPS['*'][1])),
+    new Descend(new Operand('*', ...OPS['*'])),
     new Descend('author'),
   ]),
 
@@ -48,7 +48,7 @@ const testcases = {
   '$.store.*':              new Statement([
     new Root(),
     new Descend('store'),
-    new Operand('*', OPS['*'][1]),
+    new Operand('*', ...OPS['*']),
   ]),
 
   '$.store..price':         new Statement([
@@ -67,7 +67,9 @@ const testcases = {
     new Root(),
     new Recursive('book'),
     new Descend(
-      new Operand('-', OPS['-'][1],
+      new Operand(
+        '-',
+        ...OPS['-'],
         new Statement('script', [
           new Scope(),
           new Descend('length'),
@@ -125,7 +127,7 @@ const testcases = {
     new Descend(
       new Filter(new Operand(
         '<',
-        OPS['<'][1],
+        ...OPS['<'],
         new Statement('filter', [
           new Scope(),
           new Descend('price'),
@@ -138,7 +140,7 @@ const testcases = {
   '$..*': new Statement([
     new Root(),
     new Recursive(
-      new Operand('*', OPS['*'][1]),
+      new Operand('*', ...OPS['*']),
     ),
   ]),
 
@@ -146,28 +148,28 @@ const testcases = {
     new Root(),
     new Recursive(
       new Descend(
-        new Operand('*', OPS['*'][1]),
+        new Operand('*', ...OPS['*']),
       ),
     ),
   ]),
 
   'store* $ book': new Statement([
     new Descend('store'),
-    new Operand('*', OPS['*'][1]),
+    new Operand('*', ...OPS['*']),
     new Descend('$'),
     new Descend('book'),
   ]),
 
   'store.*.$.book': new Statement([
     new Descend('store'),
-    new Operand('*', OPS['*'][1]),
+    new Operand('*', ...OPS['*']),
     new Descend('$'),
     new Descend('book'),
   ]),
 
   'avg $..price': new Operand(
     'avg',
-    OPS.avg[1],
+    ...OPS.avg,
     null,
     new Statement('operand', [
       new Root(),
@@ -181,7 +183,7 @@ const testcases = {
       new Filter(
         new Operand(
           '<',
-          OPS['<'][1],
+          ...OPS['<'],
           new Statement('filter', [
             new Scope(),
             new Descend('price'),
@@ -198,7 +200,7 @@ const testcases = {
       new Filter(
         new Operand(
           '<',
-          OPS['<'][1],
+          ...OPS['<'],
           new Statement('filter', [
             new Scope(),
             new Descend('price'),
