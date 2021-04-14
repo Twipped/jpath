@@ -4,6 +4,7 @@
   "description": "Transform, and selectively extract data from objects via a jsonpath like syntax.",
   "main": "dist/jpath.cjs.js",
   "module": "dist/jpath.esm.js",
+  "type": "module",
   "scripts": {
     "test": "tap -R base --no-coverage tests",
     "cover": "tap -R terse --coverage tests",

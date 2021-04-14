@@ -27,9 +27,11 @@ function randomItem (items) {
   }
 }
 
+const push = (arr, ...items) => { arr.push(...items); return arr; };
+
 export const DEFAULT_OPERATORS = {
-  '*':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? items.push(...values(item)) : items), []) ],
-  '~':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? items.push(...keys(item)) : items), []) ],
+  '*':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...values(item)) : push(items, item)), []) ],
+  '~':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...keys(item)) : push(items, item)), []) ],
 
   '===':      [ 0, ([ a ], [ b ]) => [ a === b ] ],
   '==':       [ 0, ([ a ], [ b ]) => [ a ==  b ] ], // eslint-disable-line eqeqeq
@@ -67,8 +69,8 @@ export const DEFAULT_OPERATORS = {
   mul:        [ 0, (set, [ b ])   => set.map((a) => a * b) ],
   div:        [ 0, (set, [ b ])   => set.map((a) => a / b) ],
 
-  keys:       [ -1, (set) => set.reduce((items, item) => items.push(...keys(item)), []) ],
-  values:     [ -1, (set) => set.reduce((items, item) => items.push(...values(item)), []) ],
+  keys:       [ -1, (set) => set.reduce((items, item) => push(items, ...keys(item)), []) ],
+  values:     [ -1, (set) => set.reduce((items, item) => push(items, ...values(item)), []) ],
   abs:        [ -1, (set) => set.map(Math.abs) ],
   ceil:       [ -1, (set) => set.map(Math.ceil) ],
   floor:      [ -1, (set) => set.map(Math.floor) ],

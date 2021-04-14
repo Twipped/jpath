@@ -21,7 +21,6 @@ import {
   Slice,
   Union,
   Filter,
-  Script,
   Operand,
 } from '../src/taxonomy.js';
 import { DEFAULT_OPERATORS as OPS } from '../src/operators.js';
@@ -68,14 +67,12 @@ const testcases = {
     new Root(),
     new Recursive('book'),
     new Descend(
-      new Script(
-        new Operand('-', OPS['-'][1],
-          new Statement([
-            new Scope(),
-            new Descend('length'),
-          ]),
-          new Literal(1),
-        ),
+      new Operand('-', OPS['-'][1],
+        new Statement('script', [
+          new Scope(),
+          new Descend('length'),
+        ]),
+        new Literal(1),
       ),
     ),
   ]),
@@ -114,7 +111,7 @@ const testcases = {
     new Recursive('book'),
     new Descend(
       new Filter(
-        new Statement([
+        new Statement('filter', [
           new Scope(),
           new Descend('isbn'),
         ]),
@@ -129,7 +126,7 @@ const testcases = {
       new Filter(new Operand(
         '<',
         OPS['<'][1],
-        new Statement([
+        new Statement('filter', [
           new Scope(),
           new Descend('price'),
         ]),
@@ -172,11 +169,45 @@ const testcases = {
     'avg',
     OPS.avg[1],
     null,
-    new Statement([
+    new Statement('operand', [
       new Root(),
       new Recursive('price'),
     ]),
   ),
+
+  '$..[?(@.price<10)]': new Statement([
+    new Root(),
+    new Recursive(
+      new Filter(
+        new Operand(
+          '<',
+          OPS['<'][1],
+          new Statement('filter', [
+            new Scope(),
+            new Descend('price'),
+          ]),
+          new Literal(10),
+        ),
+      ),
+    ),
+  ]),
+
+  '$..?(@.price<10)': new Statement([
+    new Root(),
+    new Recursive(
+      new Filter(
+        new Operand(
+          '<',
+          OPS['<'][1],
+          new Statement('filter', [
+            new Scope(),
+            new Descend('price'),
+          ]),
+          new Literal(10),
+        ),
+      ),
+    ),
+  ]),
 
 };
 

@@ -4,14 +4,15 @@ import {
   isArray,
   isObject,
   isMap,
-  isUndefined,
   isUndefinedOrNull,
   isNotUndefinedOrNull,
   isString,
   isNumber,
   isFunction,
   map,
+  entries,
   keys,
+  truthy,
 } from '@twipped/utils';
 
 function ensureArray (input) {
@@ -19,7 +20,7 @@ function ensureArray (input) {
 }
 
 function named (name, fn) {
-  fn.name = name;
+  fn.displayName = name;
   return fn;
 }
 
@@ -27,6 +28,9 @@ function select (collection, key) {
   if (isArray(collection) || isObject(collection, true)) return collection[key];
   if (isMap(collection)) return map.get(key);
 }
+
+const push = (arr, ...items) => { arr.push(...items); return arr; };
+
 
 // function has (collection, key) {
 //   if (isArray(collection) || isObject(collection, true)) return typeof collection[key] !== 'undefined';
@@ -50,8 +54,8 @@ export const Debugger = {
     debugStack = [];
   },
 
-  enter (name) {
-    const frame = { name, children: [] };
+  enter (name, extra) {
+    const frame = { name, children: [], ...extra };
     const prev = debugStack[debugStack.length - 1];
     if (prev) prev.children.push(frame);
     debugStack.push(frame);
@@ -73,9 +77,10 @@ export class Unit {
       this._build = this.build;
       this.build = () => {
         const fn = this._build();
-        return (...args) => {
-          Debugger.enter(fn.name);
-          const res = fn(...args);
+        return (p) => {
+          Debugger.enter(fn.displayName || fn.name || 'Anon', { input: p.current, scope: p.scope });
+          // console.log(p.current);
+          const res = fn(p);
           Debugger.exit(res);
           return res;
         };
@@ -86,10 +91,39 @@ export class Unit {
   build () { return named('Unit', (v) => v); }
 }
 
+
+export class Root extends Unit {
+  build () {
+    return named('Root', ({ root }) => (isUndefinedOrNull(root) ? [] : [ root ]));
+  }
+}
+
+export class Scope extends Unit {
+  build () {
+    return named('Scope', ({ scope }) => (isUndefinedOrNull(scope) ? [] : [ scope ]));
+  }
+}
+
+export class Key extends Unit {
+  build () {
+    return named('Key', ({ key }) => (isUndefinedOrNull(key) ? [] : [ key ]));
+  }
+}
+
+export class Index extends Unit {
+  build () {
+    return named('Index', ({ index }) => (isUndefinedOrNull(index) ? [] : [ index ]));
+  }
+}
+
 export class Statement extends Unit {
 
-  constructor (units = []) {
-    super({ units });
+  constructor (type, units = []) {
+    if (isArray(type)) {
+      units = type;
+      type = 'root';
+    }
+    super({ type, units });
   }
 
   push (unit) {
@@ -117,37 +151,6 @@ export class Statement extends Unit {
   }
 }
 
-export class Root extends Unit {
-
-  build () {
-    return named('Root', ({ root }) => (isUndefinedOrNull(root) ? [] : [ root ]));
-  }
-
-}
-
-export class Scope extends Unit {
-
-  build () {
-    return named('Scope', ({ scope }) => (isUndefinedOrNull(scope) ? [] : [ scope ]));
-  }
-
-}
-
-export class Key extends Unit {
-
-  build () {
-    return named('Key', ({ key }) => (isUndefinedOrNull(key) ? [] : [ key ]));
-  }
-
-}
-
-export class Index extends Unit {
-
-  build () {
-    return named('Index', ({ index }) => (isUndefinedOrNull(index) ? [] : [ index ]));
-  }
-
-}
 
 
 export class Literal extends Unit {
@@ -174,21 +177,35 @@ export class Descend extends Unit {
     let { unit } = this;
     if (isString(unit) || isNumber(unit)) {
       return named(`Descend[${unit}]`,
-        ({ current }) => current.map((item) => select(item, unit)).filter(isUndefined),
+        ({ current }) => current.reduce((results, item) => {
+          const value = select(item, unit);
+          if (isNotUndefinedOrNull(value)) results.push(value);
+          return results;
+        }, []),
       );
     }
 
-    if (unit instanceof Slice) return unit.build();
+    if (unit instanceof Slice) return named('Descend[Slice]', unit.build());
+
+    if (unit instanceof Filter) {
+      unit = unit.build();
+      return named('Descend>Filter', (props) => props.current.reduce((results, item) => {
+        const items = unit({ ...props, scope: item, current: ensureArray(item) });
+        results.push(...items);
+        return results;
+      }, []));
+    }
 
     if (unit instanceof Unit) unit = unit.build();
     if (!isFunction(unit)) throw new Error('Descend did not receive a valid target unit');
 
-    return named('Descend', (props) => props.current.reduce((items, item) => {
-      if (!isMappable(item)) return items;
-
-      items.push(...unit({ ...props, scope: item, current: keys(item) }));
-
-      return items;
+    return named('Descend', (props) => props.current.reduce((results, item) => {
+      const targetKeys = unit({ ...props, scope: item, current: keys(item) });
+      for (const targetKey of targetKeys) {
+        const targetValue = select(item, targetKey);
+        if (isNotUndefinedOrNull(targetValue)) results.push(targetValue);
+      }
+      return results;
     }, []));
   }
 
@@ -201,7 +218,6 @@ export class Recursive extends Unit {
 
   build () {
     let { unit } = this;
-    if (unit instanceof Unit) unit = unit.build();
 
     if (isString(unit) || isNumber(unit)) {
       return named(`Recursive[${unit}]`, ({ current }) => {
@@ -219,28 +235,52 @@ export class Recursive extends Unit {
           });
         }
         current.map(walk);
+
         return results;
       });
     }
 
-    return named('Recursive', (props) => {
+    if (unit instanceof Filter) {
+      unit = unit.unit.build();
+      return named('RecursiveFilter', (props) => {
 
-      const results = [];
-      const seen = new Set();
-      function walk (item) {
-        if (!isMappable(item) || seen.has(item)) return;
-        seen.add(item); // this is to prevent circular reference loops
+        const results = [];
+        const seen = new Set();
+        function walk (item, key) {
+          if (!isMappable(item) || seen.has(item)) return;
+          seen.add(item); // this is to prevent circular reference loops
 
-        map(item, (v) => {
-          const level = unit({ ...props, scope: v }).filter(isNotUndefinedOrNull);
+          const matches = unit({ ...props, scope: item, current: [ item ], key }).filter(isNotUndefinedOrNull).filter(truthy).length;
+          if (matches) results.push(item);
+
+          map(item, walk);
+        }
+
+        props.current.map(walk);
+        return results;
+      });
+    }
+
+    if (unit instanceof Unit) {
+      unit = unit.build();
+      return named('Recursive', (props) => {
+
+        const results = [];
+        const seen = new Set();
+        function walk (item, key) {
+          if (!isMappable(item) || seen.has(item)) return;
+          seen.add(item); // this is to prevent circular reference loops
+
+          const level = unit({ ...props, scope: item, current: [ item ], key }).filter(isNotUndefinedOrNull);
           if (level.length) results.push(...level);
-          walk(v);
-        });
-      }
 
-      props.current.map(walk);
-      return results;
-    });
+          map(item, walk);
+        }
+
+        props.current.map(walk);
+        return results;
+      });
+    }
   }
 }
 
@@ -257,24 +297,24 @@ export class Slice extends Unit {
   build () {
     const units = this.units.map((unit) => (unit instanceof Unit ? unit.build() : unit));
 
-    return (props) => {
+    return named('Slice', (props) => {
       const current = props.current.filter((item) => isArray(item));
-      let [ [ start ], [ stop ], [ step ] ] = units.map((unit) => (isFunction(unit) ? unit(props) : []));
-      start = isUndefinedOrNull(start) ? null : parseFloat(start);
-      stop =  isUndefinedOrNull(stop) ? null : parseFloat(stop);
-      step =  isUndefinedOrNull(step) ? null : parseFloat(step);
+      let [ start, stop, step ] = units.map((unit) => (isFunction(unit) ? unit(props) : [])).map((a) => a[0]);
+      start = isUndefinedOrNull(start) ? undefined : parseFloat(start);
+      stop =  isUndefinedOrNull(stop) ? undefined : parseFloat(stop);
+      step =  isUndefinedOrNull(step) ? undefined : parseFloat(step);
 
       if (!step) {
         return current.reduce((items, item) => (
-          isArray(item) || isString(item) ? items.push(...item.slice(start, stop)) : items
+          isArray(item) || isString(item) ? push(items, ...item.slice(start, stop)) : items
         ), []);
       }
 
       return current.reduce((items, item) => {
         if (!isArray(item) && !isString(item)) return items;
         const len = item.length;
-        const first = start === null ? 0 : Math.max(0, start < 0 ? start + len : start);
-        const last = stop === null ? len - 1 : Math.min(stop < 0 ? stop + len : stop, len - 1);
+        const first = start === undefined ? 0 : Math.max(0, start < 0 ? start + len : start);
+        const last = stop === undefined ? len - 1 : Math.min(stop < 0 ? stop + len : stop, len - 1);
         const result = [];
         if (step > 0) {
           for (let i = first; i <= last; i += step) {
@@ -286,10 +326,10 @@ export class Slice extends Unit {
           }
         }
 
-        if (isString(item)) return items.push(result.join(''));
-        return items.push(...result);
+        if (isString(item)) return push(items, result.join(''));
+        return push(items, ...result);
       }, []).filter(isNotUndefinedOrNull);
-    };
+    });
   }
 }
 
@@ -329,38 +369,13 @@ export class Filter extends Unit {
   build () {
     let { unit } = this;
     if (unit instanceof Unit) unit = unit.build();
-    if (!isFunction(unit)) throw new Error('Filter did not receive a valid target unit');
+    else return () => [];
 
-    return named('Filter',
-      (props) => props.current.reduce(
-        (items, item) => map(item,
-          (scope, key, index) => (unit({ ...props, scope, key, index })[0] ? items.push(scope) : items),
-        ),
-        [],
-      ),
-    );
-  }
-}
-
-export class Script extends Unit {
-
-  constructor (unit = null) {
-    super({ unit });
-  }
-
-  build () {
-    let { unit } = this;
-    if (unit instanceof Unit) unit = unit.build();
-    if (!isFunction(unit)) throw new Error('Script did not receive a valid target unit');
-
-    return named('Script',
-      (props) => props.current.reduce(
-        (current, item) => map(item,
-          (scope, key, index) => current.push(...unit({ ...props, scope, key, index })),
-        ),
-        [],
-      ).filter(isNotUndefinedOrNull),
-    );
+    return named('Filter', ({ root, current }) => current.reduce((results, item, index) => {
+      const matches = unit({ root, scope: item, current: [ item ], key: undefined, index }).filter(truthy).length;
+      if (matches) results.push(item);
+      return results;
+    }, []));
   }
 }
 
@@ -382,32 +397,37 @@ export class Operand extends Unit {
 
     if (left) {
       if (left instanceof Unit) left = left.build();
-      if (!isFunction(left)) throw new Error('Did not find a valid statement left of the "' + operator + '" operator.');
+      else badUnit('Operand', left, 'left of the "' + operator + '" operator.');
     }
 
     if (right) {
       if (right instanceof Unit) right = right.build();
-      if (!isFunction(right)) throw new Error('Did not find a valid statement right of the "' + operator + '" operator.');
+      else badUnit('Operand', right, 'right of the "' + operator + '" operator.');
     }
 
     if (left && right) {
-      return named(`Operand[${operator}]`,
+      return named(`Operand[${operator}|=]`,
         (props) => ensureArray(fn(left(props), right(props))),
       );
     }
 
     if (right && !left) {
-      return named(`Operand[${operator}]`,
+      return named(`Operand[${operator}|>]`,
         (props) => ensureArray(fn(right(props))),
       );
     }
 
     if (left && !right) {
       // the lexer shouldn't produce this, but lets just cover our bases
-      return named(`Operand[${operator}]`,
+      return named(`Operand[${operator}|<]`,
         (props) => ensureArray(fn(left(props))),
       );
     }
   }
 }
 
+function badUnit (source, unit, target = '') {
+  const e = new TypeError(`${source} received an invalid unit type (${typeof unit})${target && ' for ' + target}.`);
+  e.code = 'E_BAD_UNIT';
+  throw e;
+}

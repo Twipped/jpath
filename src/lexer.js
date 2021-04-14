@@ -32,7 +32,6 @@ import {
   Slice,
   Union,
   Filter,
-  Script,
   Operand,
 } from './taxonomy.js';
 
@@ -104,9 +103,13 @@ export default function lex (tokens, { operators, debug } = {}) {
 
   function scanStatement (statementType) {
     let union, slice, operand;
-    let statement = new Statement;
+    let statement = new Statement(statementType);
 
     while (next()) {
+
+      if (isChild()) {
+        continue;
+      }
 
       if (isIdentifier()) {
         statement.push(new Descend(contents));
@@ -118,39 +121,26 @@ export default function lex (tokens, { operators, debug } = {}) {
         continue;
       }
 
-      if (isChild() || isRecurse()) {
-        const recurse = isRecurse();
-        const Node = recurse ? Recursive : Descend;
+      if (isRecurse()) {
         if (next(T_IDENTIFIER) || next(T_LITERAL_NUM) || next(T_LITERAL_STR)) {
-          statement.push(new Node(contents));
+          statement.push(new Recursive(contents));
           continue;
         }
 
         if (next(T_BRACKET_OPEN)) {
           if (next(T_FILTER)) {
             next(T_PAREN_OPEN, true);
-            if (recurse) {
-              statement.push(new Recursive(new Descend(new Filter(scanStatement('filter')))));
-            } else {
-              statement.push(new Descend(new Filter(scanStatement('filter'))));
-            }
+            statement.push(new Recursive(new Filter(scanStatement('filter'))));
+            next(T_BRACKET_CLOSE, true);
             continue;
           }
 
-          if (recurse) {
-            statement.push(new Recursive(new Descend(scanStatement('substatement'))));
-          } else {
-            statement.push(new Descend(scanStatement('substatement')));
-          }
+          statement.push(new Recursive(new Descend(scanStatement('substatement'))));
           continue;
         }
 
         if (next(T_PAREN_OPEN)) {
-          if (recurse) {
-            statement.push(new Recursive(new Script(scanStatement('script'))));
-          } else {
-            statement.push(new Script(scanStatement('script')));
-          }
+          statement.push(new Recursive(scanStatement('script')));
           continue;
         }
 
@@ -158,24 +148,20 @@ export default function lex (tokens, { operators, debug } = {}) {
           if (tok.symbol) {
             const [ opType, fn ] = operators[contents];
             if (opType === 1) {
-              if (recurse) {
-                statement.push(new Recursive(new Operand(contents, fn )));
-              } else {
-                statement.push(new Operand(contents, fn ));
-              }
+              statement.push(new Recursive(new Operand(contents, fn )));
               continue;
             }
 
             wtf(`Unexpected operator, "${contents}". Only postfix operators may be used in a statement chain`, { code: E_BAD_OPERATOR });
           }
 
-          statement.push(new Node(contents));
+          statement.push(new Recursive(contents));
           continue;
         }
 
         if (next(T_FILTER)) {
           if (next(T_PAREN_OPEN)) {
-            statement.push(new Filter(scanStatement('filter')));
+            statement.push(new Recursive(new Filter(scanStatement('filter'))));
             continue;
           }
           wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
@@ -183,7 +169,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         if (next(T_TARGET)) {
           // if the target isn't at the start of the statement, it isn't a target.
-          statement.push(new Node(contents));
+          statement.push(new Recursive(contents));
           continue;
         }
 
@@ -208,7 +194,6 @@ export default function lex (tokens, { operators, debug } = {}) {
         statement.push(new Target);
         continue;
       }
-
 
       if (isOperator()) {
         if (!operators[contents]) wtf(`Unknown operator found: "${contents}"`);
@@ -254,7 +239,7 @@ export default function lex (tokens, { operators, debug } = {}) {
             wtf(`Unexpected operator, "${contents}". Only prefix operators may be used at the start of a statement`, { code: E_BAD_OPERATOR });
           }
           const s = statement;
-          statement = new Statement;
+          statement = new Statement('operand');
           if (operand) {
             // we're already inside an operator, use that for left
             o.left = operand;
@@ -285,7 +270,7 @@ export default function lex (tokens, { operators, debug } = {}) {
           } else {
             operand = o;
           }
-          o.right = statement = new Statement;
+          o.right = statement = new Statement('operand');
           continue;
         }
 
@@ -297,7 +282,7 @@ export default function lex (tokens, { operators, debug } = {}) {
         if (union) wtf('Unexpected T_SLICE inside a union.');
 
         if (!slice) slice = new Slice([ statement ]);
-        slice.push(statement = new Statement);
+        slice.push(statement = new Statement('slice'));
         continue;
       }
 
@@ -306,7 +291,7 @@ export default function lex (tokens, { operators, debug } = {}) {
         if (slice) wtf('Unexpected T_UNION inside a slice.');
 
         if (!union) union = new Union([ statement ]);
-        union.push(statement = new Statement);
+        union.push(statement = new Statement('slice'));
         continue;
       }
 
@@ -375,7 +360,7 @@ export default function lex (tokens, { operators, debug } = {}) {
       }
 
       if (isParenOpen()) {
-        statement.push(new Script(scanStatement('script')));
+        statement.push(scanStatement('script'));
         continue;
       }
 
