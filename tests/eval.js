@@ -157,6 +157,9 @@ const testcases = {
   'store* $ book': [],
   'store.*.$.book': [],
   'avg $..price': [ 13.22 ],
+  'avg $..book.*.price': [ 13.48 ],
+  '$..price (avg *)': [ 13.22 ],
+  '$..book (avg *.price)': [ 13.48 ],
 };
 
 

@@ -228,7 +228,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         if (peek(T_OPERATOR)) {
           const [ nopType ] = operators[peek().contents] || [];
-          if (nopType !== -1) {
+          if (nopType === 0) {
             wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a "${contents}" operator.`, { code: E_BAD_OPERATOR });
           }
         }
