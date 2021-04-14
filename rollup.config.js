@@ -75,40 +75,6 @@ export default [
     ],
     external,
   },
-  {
-    input: 'src/index.js',
-    output: {
-      file: 'dist/jpath.esm.min.js',
-      format: 'esm',
-    },
-    plugins: [
-      resolve({
-        preferBuiltins: true,
-      }),
-      babel({
-        exclude: 'node_modules/**',
-        presets: [
-          [ '@babel/preset-env', {
-            modules: false,
-            useBuiltIns: 'usage',
-            corejs: { version: 3, shippedProposals: true },
-          } ],
-        ],
-      }),
-      terser({
-        output: {
-          comments: false,
-        },
-        compress: {
-          ecma: 2018,
-          keep_classnames: true,
-          module: true,
-        },
-      }),
-      banner(bannerConfig),
-    ],
-    external,
-  },
 
   {
     input: 'src/index.js',
