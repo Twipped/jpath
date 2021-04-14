@@ -30,6 +30,7 @@ function select (collection, key) {
 
 const push = (arr, ...items) => { arr.push(...items); return arr; };
 
+const IDENT_MATCH = /^[a-zA-Z$_][a-zA-Z0-9$_]*$/;
 
 // function has (collection, key) {
 //   if (isArray(collection) || isObject(collection, true)) return typeof collection[key] !== 'undefined';
@@ -95,24 +96,32 @@ export class Root extends Unit {
   build () {
     return named('Root', ({ root }) => (isUndefinedOrNull(root) ? [] : [ root ]));
   }
+
+  toString () { return '$'; }
 }
 
 export class Scope extends Unit {
   build () {
     return named('Scope', ({ scope }) => (isUndefinedOrNull(scope) ? [] : [ scope ]));
   }
+
+  toString () { return '@'; }
 }
 
 export class Key extends Unit {
   build () {
     return named('Key', ({ key }) => (isUndefinedOrNull(key) ? [] : [ key ]));
   }
+
+  toString () { return '#'; }
 }
 
 export class Index extends Unit {
   build () {
     return named('Index', ({ index }) => (isUndefinedOrNull(index) ? [] : [ index ]));
   }
+
+  toString () { return '%'; }
 }
 
 export class Statement extends Unit {
@@ -148,6 +157,16 @@ export class Statement extends Unit {
       return current;
     });
   }
+
+  toString () {
+    let result = '';
+    for (let piece of this.units) {
+      piece = String(piece);
+      if (piece[0] === '.' || piece[0] === '[' || !result) result += piece;
+      else result += '.' + piece;
+    }
+    return result;
+  }
 }
 
 
@@ -164,6 +183,7 @@ export class Literal extends Unit {
     return named(`Literal[${value}]`, () => [ value ]);
   }
 
+  toString () { return JSON.stringify(this.value); }
 }
 
 export class Descend extends Unit {
@@ -206,6 +226,28 @@ export class Descend extends Unit {
       }
       return results;
     }, []));
+  }
+
+  toString () {
+    const { unit } = this;
+    if (isString(unit)) {
+      if (unit.match(IDENT_MATCH)) {
+        return unit;
+      }
+      return `["${unit}"]`;
+    }
+
+    if (isNumber(unit)) {
+      return `[${unit}]`;
+    }
+
+    if (unit instanceof Operand) {
+      if (unit.arity === 1) return unit.operator;
+      return '[' + unit.toString() + ']';
+    }
+
+    if (unit instanceof Unit) return '[' + unit.toString() + ']';
+    return '';
   }
 
 }
@@ -281,6 +323,38 @@ export class Recursive extends Unit {
       });
     }
   }
+
+  toString () {
+    let { unit } = this;
+
+    if (unit instanceof Descend) {
+      unit = unit.unit;
+    }
+
+    if (isString(unit)) {
+      if (unit.match(IDENT_MATCH)) {
+        return '..' + unit;
+      }
+      return `..["${unit}"]`;
+    }
+
+    if (isNumber(unit)) {
+      return `..[${unit}]`;
+    }
+
+
+    if (unit instanceof Operand) {
+      if (unit.arity === 1) return '..' + unit.operator;
+      return '..(' + unit.toString() + ')';
+    }
+
+    if (unit instanceof Filter) {
+      return '..' + unit.toString();
+    }
+
+    if (unit instanceof Unit) return '..[' + unit.toString() + ']';
+    return '';
+  }
 }
 
 export class Slice extends Unit {
@@ -330,6 +404,10 @@ export class Slice extends Unit {
       }, []).filter(isNotUndefinedOrNull);
     });
   }
+
+  toString () {
+    return '[' + this.units.map((u) => (u ? String(u) : '')).join(':') + ']';
+  }
 }
 
 
@@ -356,6 +434,10 @@ export class Union extends Unit {
       return result;
     });
   }
+
+  toString () {
+    return this.units.join(',');
+  }
 }
 
 
@@ -375,6 +457,10 @@ export class Filter extends Unit {
       if (matches) results.push(item);
       return results;
     }, []));
+  }
+
+  toString () {
+    return '?(' + this.unit + ')';
   }
 }
 
@@ -420,6 +506,15 @@ export class Operand extends Unit {
     }
   }
 
+  toString () {
+    const { operator, arity, left, right } = this;
+    switch (arity) {
+    case -1: return `${operator} ${right}`;
+    case  0: return `${left} ${operator} ${right}`;
+    case  1: return operator;
+    // no default
+    }
+  }
 }
 
 function badUnit (source, unit, target = '') {
