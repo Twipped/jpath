@@ -70,7 +70,7 @@ const testcases = {
       new Operand(
         '-',
         ...OPS['-'],
-        new Statement('substatement', [
+        new Statement('operand', [
           new Scope(),
           new Descend('length'),
         ]),
@@ -125,15 +125,17 @@ const testcases = {
     new Root(),
     new Recursive('book'),
     new Descend(
-      new Filter(new Operand(
-        '<',
-        ...OPS['<'],
-        new Statement('filter', [
-          new Scope(),
-          new Descend('price'),
-        ]),
-        new Literal(10),
-      )),
+      new Filter(
+        new Operand(
+          '<',
+          ...OPS['<'],
+          new Statement('operand', [
+            new Scope(),
+            new Descend('price'),
+          ]),
+          new Literal(10),
+        ),
+      ),
     ),
   ]),
 
@@ -184,7 +186,7 @@ const testcases = {
         new Operand(
           '<',
           ...OPS['<'],
-          new Statement('filter', [
+          new Statement('operand', [
             new Scope(),
             new Descend('price'),
           ]),
@@ -201,7 +203,7 @@ const testcases = {
         new Operand(
           '<',
           ...OPS['<'],
-          new Statement('filter', [
+          new Statement('operand', [
             new Scope(),
             new Descend('price'),
           ]),

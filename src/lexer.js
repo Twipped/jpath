@@ -244,6 +244,7 @@ export default function lex (tokens, { operators, debug } = {}) {
             wtf(`Unexpected operator, "${contents}". Only prefix operators may be used at the start of a statement`, { code: E_BAD_OPERATOR });
           }
 
+          statement.type = 'operand';
           const o = new Operand(contents, opType, fn);
           o.left = statement;
           o.right = scanStatement('operand', depth + 1);
@@ -271,6 +272,7 @@ export default function lex (tokens, { operators, debug } = {}) {
           break;
         }
 
+        statement.type = 'slice';
         const slice = new Slice([ statement ]);
         do {
           slice.push(scanStatement('slice', depth + 1));
@@ -292,6 +294,7 @@ export default function lex (tokens, { operators, debug } = {}) {
           break;
         }
 
+        statement.type = 'union';
         const union = new Union([ statement ]);
         do {
           union.push(scanStatement('union', depth + 1));
