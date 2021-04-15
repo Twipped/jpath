@@ -87,6 +87,7 @@ export default function tokenizer (input, { operators = {} } = {}) {
     WORDS:   OP_WORDS,
   } = parseOperators(operators);
 
+  input = input.trim();
   const max = input.length - 1;
   let pos = 0;
   let line = 1;
