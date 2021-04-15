@@ -5,6 +5,7 @@ import {
   isNumeric,
   sum,
   avg,
+  median,
   stddev,
   keys,
   values,
@@ -79,6 +80,7 @@ export const DEFAULT_OPERATORS = {
   max:        [ -1, (set) => [ Math.max(...set) ] ],
   sum:        [ -1, (set) => [ sum(set.filter(isNumeric)) ] ],
   avg:        [ -1, (set) => [ avg(set.filter(isNumeric)) ] ],
+  med:        [ -1, (set) => [ median(set.filter(isNumeric)) ] ],
   stddev:     [ -1, (set) => [ stddev(set.filter(isNumeric)) ] ],
   random:     [ -1, (set) => [ randomItem(set) ] ],
   first:      [ -1, (set) => [ set[0] ] ],
@@ -118,4 +120,9 @@ export function parseOperators (ops) {
 function symbolsort ([ a ], [ b ]) {
   if (a.length !== b.length) return b.length - a.length;
   return a > b ? -1 : 1;
+}
+
+export function operatorIsWord (operator) {
+  const char = operator.charCodeAt(0);
+  return (char >= 65 && char <= 90) || (char >= 97 && char <= 122);
 }
