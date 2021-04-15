@@ -174,8 +174,6 @@ export class Statement extends Unit {
   }
 }
 
-
-
 export class Literal extends Unit {
 
   constructor (value = null) {
@@ -466,6 +464,29 @@ export class Filter extends Unit {
 
   toString () {
     return '?(' + this.unit + ')';
+  }
+}
+
+export class Mapper extends Unit {
+
+  constructor (unit = null) {
+    super({ unit });
+  }
+
+  build () {
+    let { unit } = this;
+    if (unit instanceof Unit) unit = unit.build();
+    else return () => [];
+
+    return named('Map', ({ root, current }) => current.reduce((results, item, index) => {
+      const output = unit({ root, scope: item, current: [ item ], key: index, index });
+      if (output.length) results.push(output);
+      return results;
+    }, []));
+  }
+
+  toString () {
+    return '{' + this.unit + '}';
   }
 }
 

@@ -162,6 +162,18 @@ const testcases = {
   '$..book (avg *.price)': [ 13.48 ],
   '..book.*.price (min *, max *, avg *)': [ 8.95, 22.99, 13.48 ],
   'min ..price, max ..price, avg ..price': [ 5.45, 22.99, 13.22 ],
+  [`
+  ..book.*{
+    %,
+    title,
+    price,
+  }
+  `]: [
+    [ 0, testdata.store.book[0].title, testdata.store.book[0].price ],
+    [ 1, testdata.store.book[1].title, testdata.store.book[1].price ],
+    [ 2, testdata.store.book[2].title, testdata.store.book[2].price ],
+    [ 3, testdata.store.book[3].title, testdata.store.book[3].price ],
+  ],
 };
 
 

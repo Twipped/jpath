@@ -19,6 +19,8 @@ export const T_PAREN_OPEN    = tokenIndex++;
 export const T_PAREN_CLOSE   = tokenIndex++;
 export const T_SLICE         = tokenIndex++;
 export const T_UNION         = tokenIndex++;
+export const T_MAP_OPEN      = tokenIndex++;
+export const T_MAP_CLOSE     = tokenIndex++;
 
 export const T = [
   'T_WHITESPACE',
@@ -37,6 +39,8 @@ export const T = [
   'T_PAREN_CLOSE',
   'T_SLICE',
   'T_UNION',
+  'T_MAP_OPEN',
+  'T_MAP_CLOSE',
 ];
 
 const NUMBERS_CAN_FOLLOW = new Set([
@@ -71,6 +75,8 @@ import {
   BRACKET_CLOSE,
   BACKSLASH,
   UNDERSCORE,
+  CURL_OPEN,
+  CURL_CLOSE,
   NBSP,
 } from './characters.js';
 
@@ -192,6 +198,20 @@ export default function tokenizer (input, { operators = {} } = {}) {
   function readBrackEnd () {
     if (peek() !== BRACKET_CLOSE) return;
     token(T_BRACKET_CLOSE, ']');
+    move();
+    return true;
+  }
+
+  function readCurlStart () {
+    if (peek() !== CURL_OPEN) return;
+    token(T_MAP_OPEN, '{');
+    move();
+    return true;
+  }
+
+  function readCurlEnd () {
+    if (peek() !== CURL_CLOSE) return;
+    token(T_MAP_CLOSE, '}');
     move();
     return true;
   }
@@ -344,6 +364,7 @@ export default function tokenizer (input, { operators = {} } = {}) {
     readWhitespace,
     readBrackStart,
     readParenStart,
+    readCurlStart,
     readIdentifier,
     readNumber,
     readString,
@@ -351,6 +372,7 @@ export default function tokenizer (input, { operators = {} } = {}) {
     readBrackEnd,
     readParenEnd,
     readBrackEnd,
+    readCurlEnd,
   ];
 
   tokens = tokens.filter((t) => t.type !== T_WHITESPACE);

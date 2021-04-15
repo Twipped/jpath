@@ -15,6 +15,7 @@ import {
   Statement,
   Root,
   Scope,
+  Index,
   Literal,
   Descend,
   Recursive,
@@ -22,6 +23,7 @@ import {
   Union,
   Filter,
   Operand,
+  Mapper,
 } from '../src/taxonomy.js';
 import { DEFAULT_OPERATORS as OPS } from '../src/operators.js';
 
@@ -331,6 +333,23 @@ const testcases = {
     ]),
   ),
 
+  [`
+  ..book.*{
+    %,
+    title,
+    price,
+  }
+  `]: new Statement([
+    new Recursive('book'),
+    new Wildcard(),
+    new Mapper(
+      new Union([
+        new Index(),
+        new Descend('title'),
+        new Descend('price'),
+      ]),
+    ),
+  ]),
 };
 
 for (const [ path, expected ] of Object.entries(testcases)) {

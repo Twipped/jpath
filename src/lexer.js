@@ -18,6 +18,8 @@ import {
   T_PAREN_CLOSE,
   T_SLICE,
   T_UNION,
+  T_MAP_OPEN,
+  T_MAP_CLOSE,
 } from './tokenizer.js';
 
 import {
@@ -33,6 +35,7 @@ import {
   Union,
   Filter,
   Operand,
+  Mapper,
 } from './taxonomy.js';
 
 const E_UNEXPECTED_EOL = 'E_UNEXPECTED_EOL';
@@ -53,6 +56,8 @@ export default function lex (tokens, { operators, debug } = {}) {
   var isBracketClose = is(T_BRACKET_CLOSE);
   var isParenOpen    = is(T_PAREN_OPEN);
   var isParenClose   = is(T_PAREN_CLOSE);
+  var isMapOpen      = is(T_MAP_OPEN);
+  var isMapClose     = is(T_MAP_CLOSE);
   var isLiteralNum   = is(T_LITERAL_NUM);
   var isLiteralStr   = is(T_LITERAL_STR);
   var isLiteralPri   = is(T_LITERAL_PRI);
@@ -74,7 +79,9 @@ export default function lex (tokens, { operators, debug } = {}) {
     }
     contents = t.contents;
     tindex++;
-    return (tok = tokens.next());
+    tok = tokens.next();
+    tok._type = T[tok.type];
+    return tok;
   }
 
   function rewind (delta = 1) {
@@ -109,6 +116,11 @@ export default function lex (tokens, { operators, debug } = {}) {
 
       if (isParenOpen()) {
         statement.push(scanStatement('substatement', 0));
+        continue;
+      }
+
+      if (isMapOpen()) {
+        statement.push(new Mapper(scanStatement('map', 0)));
         continue;
       }
 
@@ -316,7 +328,7 @@ export default function lex (tokens, { operators, debug } = {}) {
         wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
       }
 
-      if (isBracketClose() || isParenClose()) {
+      if (isBracketClose() || isParenClose() || isMapClose()) {
         if (statement.length === 1) {
           return statement.units[0];
         }
