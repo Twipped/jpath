@@ -161,6 +161,7 @@ const testcases = {
   '$..price (avg *)': [ 13.22 ],
   '$..book (avg *.price)': [ 13.48 ],
   '..book.*.price (min *, max *, avg *)': [ 8.95, 22.99, 13.48 ],
+  'min ..price, max ..price, avg ..price': [ 5.45, 22.99, 13.22 ],
 };
 
 

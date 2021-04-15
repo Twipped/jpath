@@ -201,9 +201,9 @@ export default function lex (tokens, { operators, debug } = {}) {
         if (!operators[contents]) wtf(`Unknown operator found: "${contents}"`);
         const [ opType, fn ] = operators[contents];
 
-        // if the operator is a word and is immediately followed by `.` or `..`, then
+        // if the operator is a word and immediately follows a descent token then
         // this is trying to access a named property, not perform an operation.
-        if (!tok.symbol && (peek(T_CHILD) || peek(T_RECURSE))) {
+        if (!tok.symbol && (peek(T_CHILD, -1) || peek(T_RECURSE, -1))) {
           if (isChild()) statement.push(new Descend(contents));
           else if (isRecurse()) statement.push(new Recursive(contents));
           continue;
@@ -223,7 +223,7 @@ export default function lex (tokens, { operators, debug } = {}) {
           wtf(`Unexpected end of substatement (${T[peek().type]}) following a "${contents}" operator.`, { code: E_UNEXPECTED_EOL });
         }
 
-        if (peek(T_UNION) || peek(T_SLICE) || peek(T_CHILD) || peek(T_RECURSE)) {
+        if (peek(T_UNION) || peek(T_SLICE) || peek(T_CHILD)) {
           wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a "${contents}" operator.`, { code: E_BAD_OPERATOR });
         }
 

@@ -277,6 +277,27 @@ const testcases = {
     ]),
   ]),
 
+  'min ..price, max ..price, avg ..price': new Union([
+    new Operand(
+      'min',
+      ...OPS.min,
+      null,
+      new Recursive('price'),
+    ),
+    new Operand(
+      'max',
+      ...OPS.max,
+      null,
+      new Recursive('price'),
+    ),
+    new Operand(
+      'avg',
+      ...OPS.avg,
+      null,
+      new Recursive('price'),
+    ),
+  ]),
+
 };
 
 for (const [ path, expected ] of Object.entries(testcases)) {
