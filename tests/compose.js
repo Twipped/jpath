@@ -43,10 +43,10 @@ for (const [ path, expected ] of Object.entries(testcases)) {
   tap.test(path, (t) => {
     const ast = parse(path);
     const result = String(ast);
-    t.same(result, expected, path);
+    t.same(result, expected, 'composes correctly');
     const reparsed = parse(result);
     const secondResult = reparsed.toString();
-    t.same(secondResult, expected, path);
+    t.same(secondResult, expected, 'Parsing output produces same composition');
     t.end();
   });
 

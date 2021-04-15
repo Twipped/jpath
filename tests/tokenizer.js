@@ -45,10 +45,11 @@ function deline (toks) {
   return toks.map(({ line, column, ...rest }) => rest); // eslint-disable-line no-unused-vars
 }
 
-tap.test('tokenize 1', (t) => {
-  const result = tokenize('$.store[2:-1]..book[?(@.price < 10.5)].author[*][@.phone, mobile, "phone",\'mobile\', true] unique', { operators: DEFAULT_OPERATORS }).readAll();
+const testcases = {
 
-  t.same(deline(result), [
+  '': [],
+
+  '$.store[2:-1]..book[?(@.price < 10.5)].author[*][@.phone, mobile, "phone",\'mobile\', true] unique': [
     ROOT(),
     CHILD(),
     IDENTIFIER('store'),
@@ -94,15 +95,9 @@ tap.test('tokenize 1', (t) => {
     BRACKET_CLOSE(),
     WHITESPACE(),
     OPERATOR('unique'),
-  ]);
-  t.end();
-});
+  ],
 
-
-tap.test('tokenize $..book[(@.length-1)]', (t) => {
-  const result = tokenize('$..book[(@.length-1)]', { operators: DEFAULT_OPERATORS }).readAll();
-
-  t.same(deline(result), [
+  '$..book[(@.length-1)]': [
     ROOT(),
     RECURSE(),
     IDENTIFIER('book'),
@@ -115,19 +110,46 @@ tap.test('tokenize $..book[(@.length-1)]', (t) => {
     LITERAL_NUM(1),
     PAREN_CLOSE(),
     BRACKET_CLOSE(),
-  ]);
-  t.end();
-});
+  ],
 
-tap.test('tokenize avg $..price', (t) => {
-  const result = tokenize('avg $..price', { operators: DEFAULT_OPERATORS }).readAll();
-
-  t.same(deline(result), [
+  'avg $..price': [
     OPERATOR('avg'),
     WHITESPACE(),
     ROOT(),
     RECURSE(),
     IDENTIFIER('price'),
-  ]);
-  t.end();
-});
+  ],
+
+  'min ..price, max ..price, avg ..price': [
+    OPERATOR('min'),
+    WHITESPACE(),
+    RECURSE(),
+    IDENTIFIER('price'),
+    UNION(),
+    WHITESPACE(),
+    OPERATOR('max'),
+    WHITESPACE(),
+    RECURSE(),
+    IDENTIFIER('price'),
+    UNION(),
+    WHITESPACE(),
+    OPERATOR('avg'),
+    WHITESPACE(),
+    RECURSE(),
+    IDENTIFIER('price'),
+  ],
+};
+
+
+for (const [ path, expected ] of Object.entries(testcases)) {
+
+  tap.test(path || 'Empty String', (t) => {
+
+    const result = tokenize(path, { operators: DEFAULT_OPERATORS, debug: true }).readAll();
+    t.same(deline(result), expected, 'Tokens match');
+    // if (!t.passing()) log(result, expected);
+    t.end();
+
+  });
+
+}
