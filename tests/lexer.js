@@ -25,6 +25,10 @@ import {
 } from '../src/taxonomy.js';
 import { DEFAULT_OPERATORS as OPS } from '../src/operators.js';
 
+function Wildcard () {
+  return new Operand('*', ...OPS['*']);
+}
+
 const testcases = {
   '$.store["book"]': new Statement([
     new Root(),
@@ -36,7 +40,7 @@ const testcases = {
     new Root(),
     new Descend('store'),
     new Descend('book'),
-    new Descend(new Operand('*', ...OPS['*'])),
+    new Descend(new Wildcard()),
     new Descend('author'),
   ]),
 
@@ -48,7 +52,7 @@ const testcases = {
   '$.store.*':              new Statement([
     new Root(),
     new Descend('store'),
-    new Operand('*', ...OPS['*']),
+    new Wildcard(),
   ]),
 
   '$.store..price':         new Statement([
@@ -142,7 +146,7 @@ const testcases = {
   '$..*': new Statement([
     new Root(),
     new Recursive(
-      new Operand('*', ...OPS['*']),
+      new Wildcard(),
     ),
   ]),
 
@@ -150,21 +154,21 @@ const testcases = {
     new Root(),
     new Recursive(
       new Descend(
-        new Operand('*', ...OPS['*']),
+        new Wildcard(),
       ),
     ),
   ]),
 
   'store* $ book': new Statement([
     new Descend('store'),
-    new Operand('*', ...OPS['*']),
+    new Wildcard(),
     new Descend('$'),
     new Descend('book'),
   ]),
 
   'store.*.$.book': new Statement([
     new Descend('store'),
-    new Operand('*', ...OPS['*']),
+    new Wildcard(),
     new Descend('$'),
     new Descend('book'),
   ]),
@@ -218,19 +222,19 @@ const testcases = {
       'min',
       ...OPS.min,
       null,
-      new Operand('*', ...OPS['*']),
+      new Wildcard(),
     ),
     new Operand(
       'max',
       ...OPS.max,
       null,
-      new Operand('*', ...OPS['*']),
+      new Wildcard(),
     ),
     new Operand(
       'avg',
       ...OPS.avg,
       null,
-      new Operand('*', ...OPS['*']),
+      new Wildcard(),
     ),
   ]),
 
@@ -238,7 +242,7 @@ const testcases = {
     new Root(),
     new Descend('store'),
     new Descend('book'),
-    new Operand('*', ...OPS['*']),
+    new Wildcard(),
     new Operand('avg', ...OPS.avg, null,
       new Descend('price'),
     ),
@@ -249,7 +253,7 @@ const testcases = {
     new Descend('store'),
     new Descend('book'),
     new Statement('substatement', [
-      new Operand('*', ...OPS['*']),
+      new Wildcard(),
       new Descend('price'),
     ]),
   ]),
@@ -262,19 +266,19 @@ const testcases = {
         'min',
         ...OPS.min,
         null,
-        new Operand('*', ...OPS['*']),
+        new Wildcard(),
       ),
       new Operand(
         'max',
         ...OPS.max,
         null,
-        new Operand('*', ...OPS['*']),
+        new Wildcard(),
       ),
       new Operand(
         'avg',
         ...OPS.avg,
         null,
-        new Operand('*', ...OPS['*']),
+        new Wildcard(),
       ),
     ]),
   ]),
