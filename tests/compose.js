@@ -34,6 +34,7 @@ const testcases = {
   'store* $ book': 'store.*.$.book',
   'store.*.$.book': 'store.*.$.book',
   'avg $..price': 'avg $..price',
+  '$..book (avg *.price)': '$..book (avg *.price)',
 };
 
 
@@ -43,6 +44,9 @@ for (const [ path, expected ] of Object.entries(testcases)) {
     const ast = parse(path);
     const result = String(ast);
     t.same(result, expected, path);
+    const reparsed = parse(result);
+    const secondResult = reparsed.toString();
+    t.same(secondResult, expected, path);
     t.end();
   });
 

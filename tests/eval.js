@@ -157,9 +157,10 @@ const testcases = {
   'store* $ book': [],
   'store.*.$.book': [],
   'avg $..price': [ 13.22 ],
-  'avg $..book.*.price': [ 13.48 ],
+  'min $..book.*.price': [ 8.95 ],
   '$..price (avg *)': [ 13.22 ],
   '$..book (avg *.price)': [ 13.48 ],
+  '..book.*.price (min *, max *, avg *)': [ 8.95, 22.99, 13.48 ],
 };
 
 
@@ -167,9 +168,8 @@ for (const [ path, expected ] of Object.entries(testcases)) {
 
   tap.test(path, (t) => {
     const { result, ...tree } = verbose(path, testdata, { debug: true }); // eslint-disable-line no-unused-vars
-    // log(tree);
-    // log({ result, expected });
     t.same(result, expected, path);
+    if (!t.passing()) log(tree);
     t.end();
   });
 

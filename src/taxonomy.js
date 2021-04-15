@@ -161,9 +161,14 @@ export class Statement extends Unit {
   toString () {
     let result = '';
     for (let piece of this.units) {
-      piece = String(piece);
-      if (piece[0] === '.' || piece[0] === '[' || !result) result += piece;
-      else result += '.' + piece;
+      if (piece instanceof Operand && piece.arity !== 1) {
+        piece = '(' + piece + ')';
+        result += (result && ' ') + piece;
+      } else {
+        piece = String(piece);
+        if (piece[0] === '.' || piece[0] === '[' || !result) result += piece;
+        else result += '.' + piece;
+      }
     }
     return result;
   }
@@ -508,10 +513,12 @@ export class Operand extends Unit {
 
   toString () {
     const { operator, arity, left, right } = this;
+
     switch (arity) {
     case -1: return `${operator} ${right}`;
     case  0: return `${left} ${operator} ${right}`;
-    case  1: return operator;
+    case  1:
+      return operator;
     // no default
     }
   }
