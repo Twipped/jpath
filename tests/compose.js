@@ -44,6 +44,8 @@ const testcases = {
     price,
   }
   `]: '..book.* {%,title,price}',
+  'foo.@.bar': 'foo["@"].bar',
+  'foo.0': 'foo[0]',
 };
 
 

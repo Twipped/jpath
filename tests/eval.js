@@ -175,7 +175,7 @@ const testcases = {
     [ 3, testdata.store.book[3].title, testdata.store.book[3].price ],
   ],
 
-  '"FooBar" /(.*)Bar/i': [ [ 'FooBar', 'Foo' ] ],
+  '"FooBar" /(.*)Bar/i':    [ [ 'FooBar', 'Foo' ] ],
   '"FooBar" /(.*)Bar/i[0]': [ 'FooBar' ],
 };
 

@@ -364,6 +364,30 @@ const testcases = {
     new Descend(0),
   ]),
 
+  'foo.0': new Statement([
+    new Descend('foo'),
+    new Descend(0),
+  ]),
+
+  '$..?(isbn)': new Statement([
+    new Root(),
+    new Recursive(
+      new Filter(
+        new Descend('isbn'),
+      ),
+    ),
+  ]),
+
+  '$..(1,2)': new Statement([
+    new Root(),
+    new Recursive(
+      new Union([
+        new Literal(1),
+        new Literal(2),
+      ]),
+    ),
+  ]),
+
 };
 
 for (const [ path, expected ] of Object.entries(testcases)) {
