@@ -70,7 +70,7 @@ const testcases = {
       new Operand(
         '-',
         ...OPS['-'],
-        new Statement('script', [
+        new Statement('substatement', [
           new Scope(),
           new Descend('length'),
         ]),
@@ -211,6 +211,72 @@ const testcases = {
     ),
   ]),
 
+  '(min *, max *, avg *)': new Union([
+    new Operand(
+      'min',
+      ...OPS.min,
+      null,
+      new Operand('*', ...OPS['*']),
+    ),
+    new Operand(
+      'max',
+      ...OPS.max,
+      null,
+      new Operand('*', ...OPS['*']),
+    ),
+    new Operand(
+      'avg',
+      ...OPS.avg,
+      null,
+      new Operand('*', ...OPS['*']),
+    ),
+  ]),
+
+  '$.store.book* (avg price)': new Statement([
+    new Root(),
+    new Descend('store'),
+    new Descend('book'),
+    new Operand('*', ...OPS['*']),
+    new Operand('avg', ...OPS.avg, null,
+      new Descend('price'),
+    ),
+  ]),
+
+  '$.store.book (*.price)': new Statement([
+    new Root(),
+    new Descend('store'),
+    new Descend('book'),
+    new Statement('substatement', [
+      new Operand('*', ...OPS['*']),
+      new Descend('price'),
+    ]),
+  ]),
+
+
+  '..price (min *, max *, avg *)': new Statement([
+    new Recursive('price'),
+    new Union([
+      new Operand(
+        'min',
+        ...OPS.min,
+        null,
+        new Operand('*', ...OPS['*']),
+      ),
+      new Operand(
+        'max',
+        ...OPS.max,
+        null,
+        new Operand('*', ...OPS['*']),
+      ),
+      new Operand(
+        'avg',
+        ...OPS.avg,
+        null,
+        new Operand('*', ...OPS['*']),
+      ),
+    ]),
+  ]),
+
 };
 
 for (const [ path, expected ] of Object.entries(testcases)) {
@@ -218,8 +284,8 @@ for (const [ path, expected ] of Object.entries(testcases)) {
   tap.test(path, (t) => {
 
     const result = parse(path, { debug: true });
-    // log(result, expected);
     t.same(result, expected, path);
+    if (!t.passing()) log(result, expected);
     t.end();
 
   });

@@ -77,6 +77,10 @@ export default function lex (tokens, { operators, debug } = {}) {
     return (tok = tokens.next());
   }
 
+  function rewind (delta = 1) {
+    while (delta--) tokens.prev();
+  }
+
   function peek (type = null, delta = 1) {
     const t = tokens.peek(delta);
     if (t && type !== null && t.type !== type) return false;
@@ -84,30 +88,27 @@ export default function lex (tokens, { operators, debug } = {}) {
   }
 
 
-  const err = new SyntaxError();
   function wtf (msg = 'Unexpected token: ' + T[tok.type], { code = E_BAD_TOKEN, line, column, ...extra } = tok || {}) {
     msg += (line ? ` (${line}:${column})` : '');
     if (debug) msg += `[Token ${tindex}]`;
-    let e = err;
-    if (debug) {
-      e = new SyntaxError(msg);
-      e.framesToPop = 1; // ignore the wtf call itself.
-    } else {
-      err.message = msg;
-    }
+    const e = new SyntaxError(msg);
     e.code = code;
     e.token = tok;
     e.next = tokens.peek(1);
     throw Object.assign(e, extra);
   }
 
-  function scanStatement (statementType) {
-    let union, slice, operand;
-    let statement = new Statement(statementType);
+  function scanStatement (statementType, depth = 0) {
+    const statement = new Statement(statementType);
 
     while (next()) {
 
       if (isChild()) {
+        continue;
+      }
+
+      if (isParenOpen()) {
+        statement.push(scanStatement('substatement', 0));
         continue;
       }
 
@@ -131,17 +132,17 @@ export default function lex (tokens, { operators, debug } = {}) {
         if (next(T_BRACKET_OPEN)) {
           if (next(T_FILTER)) {
             next(T_PAREN_OPEN, true);
-            statement.push(new Recursive(new Filter(scanStatement('filter'))));
+            statement.push(new Recursive(new Filter(scanStatement('filter', 0))));
             next(T_BRACKET_CLOSE, true);
             continue;
           }
 
-          statement.push(new Recursive(new Descend(scanStatement('substatement'))));
+          statement.push(new Recursive(new Descend(scanStatement('descend', 0))));
           continue;
         }
 
         if (next(T_PAREN_OPEN)) {
-          statement.push(new Recursive(scanStatement('script')));
+          statement.push(new Recursive(scanStatement('recursive', 0)));
           continue;
         }
 
@@ -162,7 +163,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         if (next(T_FILTER)) {
           if (next(T_PAREN_OPEN)) {
-            statement.push(new Recursive(new Filter(scanStatement('filter'))));
+            statement.push(new Recursive(new Filter(scanStatement('filter', 0))));
             continue;
           }
           wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
@@ -235,43 +236,25 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         // infix binary
         if (opType === 0) {
-          const o = new Operand(contents, opType, fn);
           if (!statement.length) {
             wtf(`Unexpected operator, "${contents}". Only prefix operators may be used at the start of a statement`, { code: E_BAD_OPERATOR });
           }
-          const s = statement;
-          statement = new Statement('operand');
-          if (operand) {
-            // we're already inside an operator, use that for left
-            o.left = operand;
-            o.right = statement;
-          } else {
-            o.left = s;
-            o.right = statement;
-          }
-          operand = o;
-          continue;
+
+          const o = new Operand(contents, opType, fn);
+          o.left = statement;
+          o.right = scanStatement('operand', depth + 1);
+          return o;
         }
 
         // prefix unary
         if (opType === -1) {
-          const o = new Operand(contents, opType, fn);
-          // with a prefix operator we're ignoring everything before the operator,
-          // so lets just ditch the current statement.
-
-          if (operand) {
-            // we're already inside an operator, so this needs to replace that operator's right
-            // IF we are currently in that operator's right.
-            if (operand.right === statement) {
-              operand.right = o;
-            } else {
-              operand = o;
-              wtf('How did we get a prefix operator on the left hand side of a parent operator?', { code: E_THATS_A_BUG });
-            }
-          } else {
-            operand = o;
+          if (statement.length) {
+            wtf('Unexpected prefix operator mid-statement.', { code: E_BAD_OPERATOR });
           }
-          o.right = statement = new Statement('operand');
+
+          const o = new Operand(contents, opType, fn);
+          o.right = scanStatement('operand', depth + 1);
+          statement.push(o);
           continue;
         }
 
@@ -279,132 +262,82 @@ export default function lex (tokens, { operators, debug } = {}) {
       }
 
       if (isSlice()) {
-        if (operand) wtf('Unexpected T_SLICE inside an operation.');
-        if (union) wtf('Unexpected T_SLICE inside a union.');
+        if (depth) {
+          rewind();
+          break;
+        }
 
-        if (!slice) slice = new Slice([ statement ]);
-        slice.push(statement = new Statement('slice'));
-        continue;
+        const slice = new Slice([ statement ]);
+        do {
+          slice.push(scanStatement('slice', depth + 1));
+        } while (next(T_SLICE));
+        slice.units = slice.units.map((s) => {
+          if (s instanceof Statement) {
+            if (!s.length) return null;
+            if (s.length === 1) return s.units[0];
+            return s;
+          }
+          return s;
+        });
+        return slice;
       }
 
       if (isUnion()) {
-        if (operand) wtf('Unexpected T_UNION inside an operation.');
-        if (slice) wtf('Unexpected T_UNION inside a slice.');
+        if (depth) {
+          rewind();
+          break;
+        }
 
-        if (!union) union = new Union([ statement ]);
-        union.push(statement = new Statement('slice'));
-        continue;
+        const union = new Union([ statement ]);
+        do {
+          union.push(scanStatement('union', depth + 1));
+        } while (next(T_UNION));
+        union.units = union.units.map((s) => {
+          if (s instanceof Statement && s.length === 1) {
+            return s.units[0];
+          }
+          return s;
+        });
+        return union;
       }
 
       if (isFilter()) {
         if (next(T_PAREN_OPEN)) {
-          statement.push(new Filter(scanStatement('filter')));
+          statement.push(new Filter(scanStatement('filter', 0)));
           continue;
         }
         wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
       }
 
-      if (isBracketClose() && statementType !== 'substatement') {
-        wtf('Unmatched closing bracket.', { code: E_UNEXPECTED_CLOSE });
-      }
-
-      if (isParenClose() && statementType !== 'filter' && statementType !== 'script') {
-        wtf('Unmatched closing parenthesis.', { code: E_UNEXPECTED_CLOSE });
-      }
-
       if (isBracketClose() || isParenClose()) {
-        if (operand) {
-          if (operand.left instanceof Statement && operand.left.length === 1) {
-            operand.left = operand.left.units[0];
-          }
-          if (operand.right instanceof Statement && operand.right.length === 1) {
-            operand.right = operand.right.units[0];
-          }
-          return operand;
-        }
-        if (union) {
-          union.units = union.units.map((s) => {
-            if (s instanceof Statement && s.length === 1) {
-              return s.units[0];
-            }
-            return s;
-          });
-          return union;
-        }
-        if (slice) {
-          slice.units = slice.units.map((s) => {
-            if (s instanceof Statement) {
-              if (!s.length) return null;
-              if (s.length === 1) return s.units[0];
-              return s;
-            }
-            return s;
-          });
-          return slice;
-        }
         if (statement.length === 1) {
-          if (statementType === 'substatement' && statement.units[0] instanceof Literal) return statement.units[0].value;
           return statement.units[0];
         }
-        if (statement.length === 0) wtf('Unexpected end of statement (statement is empty).', { code: E_UNEXPECTED_CLOSE });
+        if (statement.length === 0 && !depth) wtf('Unexpected end of statement (statement is empty).', { code: E_UNEXPECTED_CLOSE });
         return statement;
       }
 
       if (isBracketOpen()) {
-        const substatement = scanStatement('substatement');
+        const substatement = scanStatement('descend', 0);
         if (substatement instanceof Slice) {
           statement.push(substatement);
+        } else if (substatement instanceof Literal) {
+          statement.push(new Descend(substatement.value));
         } else {
           statement.push(new Descend(substatement));
         }
         continue;
       }
 
-      if (isParenOpen()) {
-        statement.push(scanStatement('script'));
-        continue;
-      }
-
       wtf(`Unexpected token while processing statement: "${tok.contents}" (${T[tok.type]})`);
     }
 
-    if (statementType !== 'root') wtf('Unexpected end of path, unclosed substatement.', { code: E_UNEXPECTED_EOL });
-
-    if (operand) {
-      if (operand.left instanceof Statement && operand.left.length === 1) {
-        operand.left = operand.left.units[0];
-      }
-      if (operand.right instanceof Statement && operand.right.length === 1) {
-        operand.right = operand.right.units[0];
-      }
-      return operand;
-    }
-    if (union) {
-      union.units = union.units.map((s) => {
-        if (s instanceof Statement && s.length === 1) {
-          return s.units[0];
-        }
-        return s;
-      });
-      return union;
-    }
-    if (slice) {
-      slice.units = slice.units.map((s) => {
-        if (s instanceof Statement) {
-          if (!s.length) return null;
-          if (s.length === 1) return s.units[0];
-          return s;
-        }
-        return s;
-      });
-      return slice;
-    }
     if (statement.length === 1) return statement.units[0];
     if (statement.length === 0) wtf('Unexpected end of statement (statement is empty).', { code: E_UNEXPECTED_EOL });
     return statement;
   }
 
-  const result = scanStatement('root');
+  const result = scanStatement('root', 0);
   if (!tokens.eof) {
     console.error({ remaining: tokens.remaining() }); // eslint-disable-line no-console
     wtf('There are still tokens left, how did we get here?', { code: E_THATS_A_BUG });

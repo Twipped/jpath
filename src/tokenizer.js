@@ -383,6 +383,13 @@ export default function tokenizer (input, { operators = {} } = {}) {
       if (tokens[tindex] && tokens[tindex].type === T_WHITESPACE) return this.next();
       return tokens[tindex];
     },
+    prev () {
+      do {
+        if (!tindex) break;
+        tindex--;
+      } while (tokens[tindex] && tokens[tindex].type === T_WHITESPACE);
+      return tokens[tindex];
+    },
     peek (delta = 1) {
       const idx = tindex + delta;
       while (idx >= tokens.length && !eof()) read();
