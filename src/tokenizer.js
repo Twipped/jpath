@@ -21,6 +21,8 @@ export const T_SLICE         = tokenIndex++;
 export const T_UNION         = tokenIndex++;
 export const T_MAP_OPEN      = tokenIndex++;
 export const T_MAP_CLOSE     = tokenIndex++;
+export const T_REGEXP        = tokenIndex++;
+
 
 export const T = [
   'T_WHITESPACE',
@@ -73,6 +75,7 @@ import {
   AT,
   BRACKET_OPEN,
   BRACKET_CLOSE,
+  SLASH,
   BACKSLASH,
   UNDERSCORE,
   CURL_OPEN,
@@ -353,6 +356,45 @@ export default function tokenizer (input, { operators = {} } = {}) {
     wtf(`Unterminated string literal: ${input.substr(p, 20)}…`, { l, c });
   }
 
+  function readRegularExpression () {
+    let char = peek();
+    if (char !== SLASH || peek(2) === SLASH) return; // skip "//"
+    const { p, l, c } = plc();
+    const fence = char;
+    move();
+    let closed = false;
+    while ((char = peek())) {
+      if (closed) {
+        if (isAlpha(char)) {
+          // read flags
+          move();
+          continue;
+        }
+        break;
+      }
+      if (char === BACKSLASH) {
+        move(2);
+        continue;
+      }
+      if (char === fence) {
+        closed = true;
+        move();
+        continue;
+      }
+      move();
+    }
+    if (closed) {
+      const [ , re, flags ] = input.slice(p, pos).split('/');
+      try {
+        token(T_REGEXP, new RegExp(re, flags || undefined),  l, c);
+        return true;
+      } catch (e) {
+        wtf(e.message + ': ' + re, { l, c });
+      }
+    }
+    wtf(`Unterminated regular expression: ${input.substr(p, 20)}…`, { l, c });
+  }
+
   function read () {
     if (eof()) return false;
     for (const r of read.order) {
@@ -368,6 +410,7 @@ export default function tokenizer (input, { operators = {} } = {}) {
     readIdentifier,
     readNumber,
     readString,
+    readRegularExpression,
     readOperator,
     readBrackEnd,
     readParenEnd,

@@ -20,6 +20,7 @@ import {
   T_UNION,
   T_MAP_OPEN,
   T_MAP_CLOSE,
+  T_REGEXP,
 } from './tokenizer.js';
 
 import {
@@ -36,6 +37,7 @@ import {
   Filter,
   Operand,
   Mapper,
+  RegularExpression,
 } from './taxonomy.js';
 
 const E_UNEXPECTED_EOL = 'E_UNEXPECTED_EOL';
@@ -44,6 +46,13 @@ const E_BAD_TOKEN = 'E_BAD_TOKEN';
 const E_THATS_A_BUG = 'E_THATS_A_BUG';
 const E_BAD_OPERATOR_FUNCTION = 'E_BAD_OPERATOR_FUNCTION';
 const E_UNEXPECTED_CLOSE = 'E_UNEXPECTED_CLOSE';
+
+import { inspect } from 'util';
+function log (...args) { // eslint-disable-line no-unused-vars
+  for (const a of args) {
+    process.stdout.write(inspect(a, { colors: true, depth: Infinity }) + '\n');
+  }
+}
 
 export default function lex (tokens, { operators, debug } = {}) {
   let tok, contents;
@@ -68,6 +77,7 @@ export default function lex (tokens, { operators, debug } = {}) {
   var isUnion        = is(T_UNION);
   var isTarget       = is(T_TARGET);
   var isLiteral = (t = tok) => isLiteralNum(t) || isLiteralStr(t) || isLiteralPri(t);
+  var isRegExp       = is(T_REGEXP);
 
   function next (type = null, required = false) {
     if (tokens.eof) return false;
@@ -307,9 +317,17 @@ export default function lex (tokens, { operators, debug } = {}) {
         }
 
         statement.type = 'union';
-        const union = new Union([ statement ]);
+        const union = new Union();
+        if (statement.length > 1) union.push(statement);
+        else if (statement.length === 1) union.push(statement.units[0]);
+
         do {
-          union.push(scanStatement('union', depth + 1));
+          let stmt = scanStatement('union', depth + 1);
+          if (stmt instanceof Statement) {
+            if (stmt.length === 1) stmt = stmt.units[0];
+            else if (!stmt.length) continue;
+          }
+          union.push(stmt);
         } while (next(T_UNION));
         union.units = union.units.map((s) => {
           if (s instanceof Statement && s.length === 1) {
@@ -345,6 +363,11 @@ export default function lex (tokens, { operators, debug } = {}) {
         } else {
           statement.push(new Descend(substatement));
         }
+        continue;
+      }
+
+      if (isRegExp()) {
+        statement.push(new RegularExpression(contents));
         continue;
       }
 

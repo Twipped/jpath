@@ -24,6 +24,7 @@ import {
   Filter,
   Operand,
   Mapper,
+  RegularExpression,
 } from '../src/taxonomy.js';
 import { DEFAULT_OPERATORS as OPS } from '../src/operators.js';
 
@@ -350,6 +351,19 @@ const testcases = {
       ]),
     ),
   ]),
+
+  'value /.*Foo/i[0]': new Statement([
+    new Descend('value'),
+    new RegularExpression(/.*Foo/i),
+    new Descend(0),
+  ]),
+
+  '"FooBar" /.*Bar/i[0]': new Statement([
+    new Literal('FooBar'),
+    new RegularExpression(/.*Bar/i),
+    new Descend(0),
+  ]),
+
 };
 
 for (const [ path, expected ] of Object.entries(testcases)) {

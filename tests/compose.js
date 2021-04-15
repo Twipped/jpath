@@ -36,6 +36,14 @@ const testcases = {
   'avg $..price': 'avg $..price',
   '$..book (avg *.price)': '$..book (avg *.price)',
   "$['store']['book'][0]['title']": '$.store.book[0].title',
+  'value /.*Foo/i[0]': 'value /.*Foo/i[0]',
+  [`
+  ..book.*{
+    %,
+    title,
+    price,
+  }
+  `]: '..book.* {%,title,price}',
 };
 
 

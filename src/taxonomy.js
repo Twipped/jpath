@@ -166,7 +166,8 @@ export class Statement extends Unit {
         result += (result && ' ') + piece;
       } else {
         piece = String(piece);
-        if (piece[0] === '.' || piece[0] === '[' || !result) result += piece;
+        if (piece[0] === '{' || piece[0] === '(' || piece[0] === '/') result += ' ' + piece;
+        else if (piece[0] === '.' || piece[0] === '['  || !result) result += piece;
         else result += '.' + piece;
       }
     }
@@ -542,6 +543,27 @@ export class Operand extends Unit {
       return operator;
     // no default
     }
+  }
+}
+
+export class RegularExpression extends Unit {
+  constructor (regex) {
+    super({ regex });
+  }
+
+  build () {
+    return named(`RegExp[${this.regex}]`, ({ current }) => current.reduce((results, item) => {
+      if (isNumber(item)) item = String(item);
+      if (isString(item)) {
+        const match = this.regex.exec(item);
+        if (match) results.push(match);
+      }
+      return results;
+    }, []));
+  }
+
+  toString () {
+    return this.regex.toString();
   }
 }
 

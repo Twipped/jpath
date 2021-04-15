@@ -18,6 +18,7 @@ import tokenize, {
   T_PAREN_CLOSE,
   T_SLICE,
   T_UNION,
+  T_REGEXP,
 } from '../src/tokenizer.js';
 import { DEFAULT_OPERATORS } from '../src/operators.js';
 
@@ -40,6 +41,7 @@ const CHILD           = (contents = '.'    ) => ({ contents, type: T_CHILD });
 const RECURSE         = (contents = '..'   ) => ({ contents, type: T_RECURSE });
 const SLICE           = (contents = ':'    ) => ({ contents, type: T_SLICE });
 const UNION           = (contents = ','    ) => ({ contents, type: T_UNION });
+const REGEXP          = (contents = null   ) => ({ contents, type: T_REGEXP });
 
 function deline (toks) {
   return toks.map(({ line, column, ...rest }) => rest); // eslint-disable-line no-unused-vars
@@ -138,6 +140,16 @@ const testcases = {
     RECURSE(),
     IDENTIFIER('price'),
   ],
+
+  'value /.*Foo/i[0]': [
+    IDENTIFIER('value'),
+    WHITESPACE(),
+    REGEXP(/.*Foo/i),
+    BRACKET_OPEN(),
+    LITERAL_NUM(0),
+    BRACKET_CLOSE(),
+  ],
+
 };
 
 
