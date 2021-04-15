@@ -300,6 +300,33 @@ const testcases = {
     ),
   ]),
 
+  "$['store']['book'][0]['title']": new Statement([
+    new Root(),
+    new Descend('store'),
+    new Descend('book'),
+    new Descend(0),
+    new Descend('title'),
+  ]),
+
+  'store book 0 title': new Statement([
+    new Descend('store'),
+    new Descend('book'),
+    new Descend(0),
+    new Descend('title'),
+  ]),
+
+  'store mod 0 title': new Operand(
+    'mod',
+    ...OPS.mod,
+    new Statement('operand', [
+      new Descend('store'),
+    ]),
+    new Statement('operand', [
+      new Descend(0),
+      new Descend('title'),
+    ]),
+  ),
+
 };
 
 for (const [ path, expected ] of Object.entries(testcases)) {
