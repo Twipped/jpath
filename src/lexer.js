@@ -118,8 +118,12 @@ export default function lex (tokens, { operators, debug } = {}) {
       }
 
       if (isLiteral()) {
-        if (isLiteralNum()) statement.push(new Literal(Number(contents)));
-        else statement.push(new Literal(contents));
+        if (isLiteralNum()) contents = Number(contents);
+
+        // a literal can only occur as the sole member of a statement.
+        if (statement.length || peek(T_IDENTIFIER) || peek(T_LITERAL_NUM) || peek(T_LITERAL_STR) || peek(T_LITERAL_PRI)) {
+          statement.push(new Descend(contents));
+        } else statement.push(new Literal(contents));
         continue;
       }
 
