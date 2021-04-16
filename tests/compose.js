@@ -46,6 +46,8 @@ const testcases = {
   `]: '..book.* {%,title,price}',
   'foo.@.bar': 'foo["@"].bar',
   'foo.0': 'foo[0]',
+  '..book.* ({ index: %, title: title, price: price })': '..book.* {"index": %, "title": title, "price": price}',
+  '( foo, bar, baz: "1" )': '"foo": foo, "bar": bar, "baz": "1"',
 };
 
 

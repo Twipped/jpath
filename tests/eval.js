@@ -160,8 +160,9 @@ const testcases = {
   'min $..book.*.price': [ 8.95 ],
   '$..price (avg *)': [ 13.22 ],
   '$..book (avg *.price)': [ 13.48 ],
-  '..book.*.price (min *, max *, avg *)': [ 8.95, 22.99, 13.48 ],
-  'min ..price, max ..price, avg ..price': [ 5.45, 22.99, 13.22 ],
+  '..book.*.price (min *, max *, avg *)': [ [ 8.95, 22.99, 13.48 ] ],
+  'min ..price, max ..price, avg ..price': [ [ 5.45, 22.99, 13.22 ] ],
+  '(min ..price, max ..price, avg ..price)*': [ [ 5.45, 22.99, 13.22 ] ],
   [`
   ..book.*{
     %,
@@ -174,9 +175,33 @@ const testcases = {
     [ 2, testdata.store.book[2].title, testdata.store.book[2].price ],
     [ 3, testdata.store.book[3].title, testdata.store.book[3].price ],
   ],
+  [`
+  ..book.*(
+    title,
+    price,
+  )
+  `]: [
+    [
+      testdata.store.book[0].title,
+      testdata.store.book[1].title,
+      testdata.store.book[2].title,
+      testdata.store.book[3].title,
+      testdata.store.book[0].price,
+      testdata.store.book[1].price,
+      testdata.store.book[2].price,
+      testdata.store.book[3].price,
+    ],
+  ],
 
   '"FooBar" /(.*)Bar/i':    [ [ 'FooBar', 'Foo' ] ],
   '"FooBar" /(.*)Bar/i[0]': [ 'FooBar' ],
+
+  '..book.* ({ index: %, title: title, price: price })': [
+    { index: 0, title: testdata.store.book[0].title, price: testdata.store.book[0].price },
+    { index: 1, title: testdata.store.book[1].title, price: testdata.store.book[1].price },
+    { index: 2, title: testdata.store.book[2].title, price: testdata.store.book[2].price },
+    { index: 3, title: testdata.store.book[3].title, price: testdata.store.book[3].price },
+  ],
 };
 
 
@@ -185,7 +210,8 @@ for (const [ path, expected ] of Object.entries(testcases)) {
   tap.test(path, (t) => {
     const { result, ...tree } = verbose(path, testdata, { debug: true }); // eslint-disable-line no-unused-vars
     t.same(result, expected, path);
-    if (!t.passing()) log(tree);
+    // if (!t.passing()) log(tree);
+    if (!t.passing()) log(result, expected);
     t.end();
   });
 

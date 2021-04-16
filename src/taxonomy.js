@@ -14,6 +14,11 @@ import {
   truthy,
 } from './utils/index.js';
 
+import wtf, {
+  E_BAD_SYNTAX,
+  E_BAD_UNIT,
+} from './wtf.js';
+
 function ensureArray (input) {
   return (isArray(input) ? input : [ input ]).filter(isNotUndefinedOrNull);
 }
@@ -182,6 +187,30 @@ export class Statement extends Unit {
   }
 }
 
+export class Nested extends Unit {
+
+  constructor (unit = null) {
+    super({ unit });
+  }
+
+  build () {
+    let { unit } = this;
+    if (unit instanceof Unit) unit = unit.build();
+    else return () => [];
+
+    return named('Nested', ({ root, current }) => current.reduce((results, item, index) => {
+      const output = unit({ root, scope: item, current: [ item ], key: index, index });
+      if (output.length) results.push(output);
+      return results;
+    }, []));
+  }
+
+  toString () {
+    return '(' + this.unit + ')';
+  }
+}
+
+
 export class Literal extends Unit {
 
   constructor (value = null) {
@@ -205,6 +234,8 @@ export class Descend extends Unit {
 
   build () {
     let { unit } = this;
+    let mode = null;
+
     if (isString(unit) || isNumber(unit)) {
       return named(`Descend[${unit}]`,
         ({ current }) => current.reduce((results, item) => {
@@ -226,11 +257,13 @@ export class Descend extends Unit {
       }, []));
     }
 
+    if (unit instanceof Union) mode = 'union';
     if (unit instanceof Unit) unit = unit.build();
     if (!isFunction(unit)) throw new Error('Descend did not receive a valid target unit');
 
     return named('Descend', (props) => props.current.reduce((results, item) => {
-      const targetKeys = unit({ ...props, scope: item, current: keys(item) });
+      let targetKeys = unit({ ...props, scope: item, current: keys(item) });
+      if (mode === 'union') targetKeys = targetKeys[0];
       for (const targetKey of targetKeys) {
         const targetValue = select(item, targetKey);
         if (isNotUndefinedOrNull(targetValue)) results.push(targetValue);
@@ -375,6 +408,10 @@ export class Slice extends Unit {
   }
 
   push (unit) {
+    if (unit instanceof Statement) {
+      if (!unit.length) unit = null;
+      else if (unit.length === 1) unit = unit.units[0];
+    }
     this.units.push(unit);
   }
 
@@ -429,6 +466,10 @@ export class Union extends Unit {
   }
 
   push (unit) {
+    if (unit instanceof Statement) {
+      if (!unit.length) return;
+      else if (unit.length === 1) unit = unit.units[0];
+    }
     this.units.push(unit);
   }
 
@@ -442,7 +483,7 @@ export class Union extends Unit {
       for (const unit of units) {
         result.push(...unit(props));
       }
-      return result;
+      return [ result ];
     });
   }
 
@@ -450,6 +491,71 @@ export class Union extends Unit {
     return this.units.join(',');
   }
 }
+
+export class Hashmap extends Unit {
+
+  constructor (properties = []) {
+    super({ properties: new Map(properties) });
+  }
+
+  add (keyEx, valueEx = null) {
+    if (!valueEx) valueEx = keyEx;
+    if (keyEx instanceof Descend) {
+      if (keyEx.unit instanceof Descend || keyEx.unit instanceof Literal) {
+        keyEx = keyEx.unit;
+      } else if (isString(keyEx.unit)) {
+        keyEx = new Literal(keyEx.unit);
+      }
+    }
+    this.properties.set(keyEx, valueEx);
+    return this;
+  }
+
+  get entries () {
+    return Array.from(this.properties.entries());
+  }
+
+  build () {
+    const entries = this.entries.map(([ keyEx, valueEx ]) => [ keyEx.build(), valueEx.build() ]);
+
+    return named('Hashmap', (props) => {
+      const obj = {};
+      for (const [ keyEx, valueEx ] of entries) {
+        const [ key ] = keyEx(props);
+        const [ value ] = valueEx(props);
+        obj[ key ] = value;
+      }
+      return [ obj ];
+    });
+  }
+
+  toString () {
+    return this.entries.map((kv) => kv.join(': ')).join(', ');
+  }
+}
+Hashmap.from = (input) => {
+  if (input instanceof Slice) {
+    if (input.units.length !== 2) {
+      wtf('Encountered an unexpected number of expressions while converting a Slice to a Hashmap: ' + input.units.length, { code: E_BAD_SYNTAX });
+    }
+    const units = input.units.map((s) => {
+      if (s instanceof Statement) {
+        if (!s.length) {
+          wtf('Encountered an empty expression converting a Slice to a Hashmap.', { code: E_BAD_SYNTAX });
+        }
+        if (s.length === 1) return s.units[0];
+      }
+      return s;
+    });
+    return new Hashmap().add(...units);
+  }
+  if (input instanceof Union) {
+    const h = new Hashmap();
+    input.units.map((u) => h.add(u));
+    return h;
+  }
+  badUnit('Hashmap', input, 'Hashmap.from() received unsupported unit.', E_BAD_SYNTAX);
+};
 
 
 export class Filter extends Unit {
@@ -488,7 +594,7 @@ export class Mapper extends Unit {
 
     return named('Map', ({ root, current }) => current.reduce((results, item, index) => {
       const output = unit({ root, scope: item, current: [ item ], key: index, index });
-      if (output.length) results.push(output);
+      if (output.length) results.push(...output);
       return results;
     }, []));
   }
@@ -535,7 +641,7 @@ export class Operand extends Unit {
       );
 
     default:
-      throw new TypeError(`Unrecognized operand arity: "${arity}"`);
+      wtf(`Unrecognized operand arity: "${arity}"`);
 
     }
   }
@@ -574,8 +680,9 @@ export class RegularExpression extends Unit {
   }
 }
 
-function badUnit (source, unit, target = '') {
-  const e = new TypeError(`${source} received an invalid unit type (${typeof unit})${target && ' for ' + target}.`);
-  e.code = 'E_BAD_UNIT';
+function badUnit (source, unit, target = '', code = E_BAD_UNIT) {
+  const e = new TypeError(`${source} received an invalid unit type (${typeof unit})${target && ' for ' + target}: ${unit}`);
+  e.unit = unit;
+  e.code = code;
   throw e;
 }

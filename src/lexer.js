@@ -38,14 +38,17 @@ import {
   Operand,
   Mapper,
   RegularExpression,
+  Hashmap,
 } from './taxonomy.js';
 
-const E_UNEXPECTED_EOL = 'E_UNEXPECTED_EOL';
-const E_BAD_OPERATOR = 'E_BAD_OPERATOR';
-const E_BAD_TOKEN = 'E_BAD_TOKEN';
-const E_THATS_A_BUG = 'E_THATS_A_BUG';
-const E_BAD_OPERATOR_FUNCTION = 'E_BAD_OPERATOR_FUNCTION';
-const E_UNEXPECTED_CLOSE = 'E_UNEXPECTED_CLOSE';
+import {
+  E_UNEXPECTED_EOL,
+  E_BAD_OPERATOR,
+  E_BAD_TOKEN,
+  E_THATS_A_BUG,
+  E_BAD_OPERATOR_FUNCTION,
+  E_UNEXPECTED_CLOSE,
+} from './wtf.js';
 
 import { inspect } from 'util';
 function log (...args) { // eslint-disable-line no-unused-vars
@@ -288,54 +291,50 @@ export default function lex (tokens, { operators, debug } = {}) {
         wtf(`Operator function for "${contents}" provided an unsupported arity: "${opType}"`, { code: E_BAD_OPERATOR_FUNCTION });
       }
 
-      if (isSlice()) {
+      if (isSlice() || isUnion()) {
         if (depth) {
           rewind();
           break;
         }
 
-        statement.type = 'slice';
-        const slice = new Slice([ statement ]);
-        do {
-          slice.push(scanStatement('slice', depth + 1));
-        } while (next(T_SLICE));
-        slice.units = slice.units.map((s) => {
-          if (s instanceof Statement) {
-            if (!s.length) return null;
-            if (s.length === 1) return s.units[0];
-            return s;
-          }
-          return s;
-        });
-        return slice;
-      }
-
-      if (isUnion()) {
-        if (depth) {
-          rewind();
-          break;
+        let unit, mode, segments;
+        if (isSlice()) {
+          mode = statement.type = 'slice';
+          unit = new Slice();
+        } else if (isUnion()) {
+          mode = statement.type = 'union';
+          unit = new Union();
         }
-
-        statement.type = 'union';
-        const union = new Union();
-        if (statement.length > 1) union.push(statement);
-        else if (statement.length === 1) union.push(statement.units[0]);
+        unit.push(statement);
 
         do {
-          let stmt = scanStatement('union', depth + 1);
-          if (stmt instanceof Statement) {
-            if (stmt.length === 1) stmt = stmt.units[0];
-            else if (!stmt.length) continue;
+          if ((isUnion() && mode === 'slice')) {
+            // This is an object! We have an object, people!
+            mode = 'hashmap';
+            segments = [];
+            unit = Hashmap.from(unit);
+          } else if ((isSlice() && mode === 'union')) {
+            mode = 'hashmap';
+            segments = [ unit.units.pop() ];
+            unit = Hashmap.from(unit);
           }
-          union.push(stmt);
-        } while (next(T_UNION));
-        union.units = union.units.map((s) => {
-          if (s instanceof Statement && s.length === 1) {
-            return s.units[0];
+
+          if (mode === 'hashmap') {
+            if (!isUnion() && !isSlice) {
+              wtf(`Expected to find a T_COMMA inside Hashmap, instead found ${T[peek().type]}`);
+            }
+            segments.push( scanStatement(mode, depth + 1) );
+            if (segments.length === 1 && next(T_SLICE)) {
+              segments.push( scanStatement(mode, depth + 1) );
+            }
+            unit.add(...segments);
+            segments = [];
+          } else {
+            unit.push(scanStatement(mode, depth + 1));
           }
-          return s;
-        });
-        return union;
+
+        } while (next(T_SLICE) || next(T_UNION));
+        return unit;
       }
 
       if (isFilter()) {

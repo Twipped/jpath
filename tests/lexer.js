@@ -25,6 +25,7 @@ import {
   Operand,
   Mapper,
   RegularExpression,
+  Hashmap,
 } from '../src/taxonomy.js';
 import { DEFAULT_OPERATORS as OPS } from '../src/operators.js';
 
@@ -386,6 +387,47 @@ const testcases = {
         new Literal(2),
       ]),
     ),
+  ]),
+
+  '( foo: 0, bar: "1" )': new Hashmap([
+    [
+      new Literal('foo'),
+      new Literal(0),
+    ],
+    [
+      new Literal('bar'),
+      new Literal('1'),
+    ],
+  ]),
+
+  '( [foo]: 0, bar, baz: "1" )': new Hashmap([
+    [
+      new Descend('foo'),
+      new Literal(0),
+    ],
+    [
+      new Literal('bar'),
+      new Descend('bar'),
+    ],
+    [
+      new Literal('baz'),
+      new Literal('1'),
+    ],
+  ]),
+
+  '( foo, bar, baz: "1" )': new Hashmap([
+    [
+      new Literal('foo'),
+      new Descend('foo'),
+    ],
+    [
+      new Literal('bar'),
+      new Descend('bar'),
+    ],
+    [
+      new Literal('baz'),
+      new Literal('1'),
+    ],
   ]),
 
 };
