@@ -148,7 +148,7 @@ JPath supports a full compliment of operators for manipulating data.
 | -       | Minus                    | Produces the result of subtracting the first value of the right expression from the first value of the left expression |
 | +       | Plus                     | Produces the result of subtracting the first value of the right expression from the first value of the left expression |
 | &&      | Logical And              | Returns the right side results if the left side results contain truthy values, the left side results if not. |
-| ||      | Logical Or               | Returns the left side results if the left side results contain truthy values, the right side results if not. |
+| &#124;&#124; | Logical Or               | Returns the left side results if the left side results contain truthy values, the right side results if not. |
 | ??      | Null Coalesce            | Returns the left side results unless the results are empty, then returns the right side. |
 | !       | Falsey                   | Results in a single `true` if the statement to the right has a truthy value. |
 | !!      | Truthy                   | Results in a single `true` if the statement to the right is empty or contains no truthy values. |
