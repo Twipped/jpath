@@ -61,8 +61,8 @@ Following the same rules as JavaScript, property identifiers can only start with
 
 The `..` (double period) notation identifies that you are seeking any value identified immediately following the `..`.
 
-Examples:
-
+| Examples |   |
+| -------  | - |
 | `@..book` | Recursively scans every object in the current scope to find a value named `book` |
 | `@..[$.marker]` | Recursively scans every object from the current scope to find any values named with the value at `$.marker` |
 | `$..(1,2)` | Returns the second and third items from every array found in the data |
@@ -76,6 +76,8 @@ JPath recognizes the `true`, `false` and `null` keywords as literal values, as w
 
 The comma (`,`) token allows you to return multiple discrete values from an expression.
 
+| Examples |   |
+| -------  | - |
 | `$.a, $.b` | Produces a two item array containing the values of `a` and `b` |
 | `products.*.price (max *, min *)` | Produces a two item array of the smallest and largest prices |
 | `($.a, $.b) join ', '` | Selects the values of `a` and `b` and joins them together into a single string result. |
@@ -84,6 +86,8 @@ The comma (`,`) token allows you to return multiple discrete values from an expr
 
 Arrays and strings may be sliced using the bracket-colon notation: `[start:end:step]`
 
+| Examples |   |
+| -------  | - |
 | `$.items[2:]`   | Returns all items, skipping the first two. |
 | `$.items[-2:]`  | Returns the last two items. |
 | `$.items[:2]`   | Returns the first two items. |
@@ -104,7 +108,7 @@ Note that this does support the shortened notation where it is not needed to typ
 
 An expression wrapped in curly braces (`{` and `}`) is a Mapping expression. This will take the values received from the left of the Mapping, run the internal expression against each one, and output the non-null results.
 
-`$.products.* { productid, price mul 0.5 }` produces an array of arrays where each
+`$.products.* { productid, price mul 0.5 }` Produces an array of arrays where each contains the productid and half the price.
 
 ### Filtering
 
