@@ -33,6 +33,9 @@ const push = (arr, ...items) => { arr.push(...items); return arr; };
 
 function bool (input) { return  input ? [ true ] : []; }
 
+var collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base', ignorePunctuation: true, caseFirst: false });
+
+
 export const DEFAULT_OPERATORS = {
   '*':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...values(item)) : push(items, item)), []) ],
   '~':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...keys(item)) : push(items, item)), []) ],
@@ -96,6 +99,7 @@ export const DEFAULT_OPERATORS = {
   sizeof:     [ -1, (set) => set.map(sizeOf) ],
   count:      [ -1, (set) => [ set.length ] ],
   empty:      [ -1, (set) => bool(set.length) ],
+  sort:       [ -1, (set) => [ ...set ].sort(collator.compare) ],
 };
 
 export function parseOperators (ops) {
