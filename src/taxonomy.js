@@ -89,6 +89,13 @@ export class Unit {
   }
 
   build () { return named('Unit', (v) => v); }
+
+  toString () { return ''; }
+
+  make () {
+    const fn = this.build();
+    return (data) => fn({ root: data, scope: data, current: [ data ] });
+  }
 }
 
 

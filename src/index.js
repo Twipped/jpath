@@ -18,8 +18,7 @@ export function compile (path, { operators, debug, cache } = {}) {
   let fn = !debug && cache && cache.get && cache.get(path);
   if (!fn) {
     const ast = parse(path, { operators, debug });
-    const trunk = ast.build();
-    fn = (data) => trunk({ root: data, scope: data, current: [ data ] });
+    fn = ast.make();
     cache && cache.set(path, fn);
   }
 
@@ -34,9 +33,9 @@ export function verbose (path, data, { operators }) {
   const prevDebug = Debugger.enabled;
   Debugger.enable(true);
   const ast = parse(path, { operators });
-  const trunk = ast.build();
+  const fn = ast.make();
   Debugger.enter('verbose');
-  const result = Debugger.exit(trunk({ root: data, scope: data, current: [ data ] }));
+  const result = Debugger.exit(fn(data));
   Debugger.enable(prevDebug);
   return result;
 }
