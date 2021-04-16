@@ -50,12 +50,12 @@ import {
   E_UNEXPECTED_CLOSE,
 } from './wtf.js';
 
-import { inspect } from 'util';
-function log (...args) { // eslint-disable-line no-unused-vars
-  for (const a of args) {
-    process.stdout.write(inspect(a, { colors: true, depth: Infinity }) + '\n');
-  }
-}
+// import { inspect } from 'util';
+// function log (...args) { // eslint-disable-line no-unused-vars
+//   for (const a of args) {
+//     process.stdout.write(inspect(a, { colors: true, depth: Infinity }) + '\n');
+//   }
+// }
 
 export default function lex (tokens, { operators, debug } = {}) {
   let tok, contents;
