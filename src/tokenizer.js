@@ -1,5 +1,5 @@
 
-import { anyOf } from './utils/index.js';
+import { anyOf } from '@twipped/utils';
 import { parseOperators } from './operators.js';
 
 let tokenIndex = 0;

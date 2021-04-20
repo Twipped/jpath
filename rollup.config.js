@@ -9,12 +9,7 @@ const bannerConfig = {
 };
 
 const external = [
-  'crypto',
-  'stream',
-  'fs',
-  'stream',
-  'path',
-  'util',
+  '@twipped/utils',
 ];
 
 export default [

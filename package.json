@@ -42,7 +42,9 @@
     "LICENSE.txt",
     "README.md"
   ],
-  "dependencies": {},
+  "dependencies": {
+    "@twipped/utils": "~3.0.0"
+  },
   "publishConfig": {
     "access": "public"
   }

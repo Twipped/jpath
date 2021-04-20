@@ -1,5 +1,5 @@
 
-import { isString } from './utils/index.js';
+import { isString } from '@twipped/utils';
 
 import {
   T,
