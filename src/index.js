@@ -25,7 +25,8 @@ export function compile (path, { operators, debug, cache } = {}) {
   return fn;
 }
 
-export function execute (path, data, { operators, debug, cache = new Map } = {}) {
+const executeCache = new Map();
+export function execute (path, data, { operators, debug, cache = executeCache } = {}) {
   return compile(path, { operators, debug, cache })(data);
 }
 
