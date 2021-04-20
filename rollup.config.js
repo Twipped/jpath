@@ -1,6 +1,4 @@
-import resolve from '@rollup/plugin-node-resolve';
 import babel from 'rollup-plugin-babel';
-import { terser } from 'rollup-plugin-terser';
 import banner from 'rollup-plugin-banner';
 import { join } from 'path';
 
@@ -22,9 +20,6 @@ export default [
       exports: 'default',
     },
     plugins: [
-      resolve({
-        preferBuiltins: true,
-      }),
       babel({
         exclude: 'node_modules/**',
         presets: [
@@ -50,9 +45,6 @@ export default [
       format: 'esm',
     },
     plugins: [
-      resolve({
-        preferBuiltins: true,
-      }),
       babel({
         exclude: 'node_modules/**',
         presets: [
@@ -66,36 +58,6 @@ export default [
           } ],
         ],
       }),
-      banner(bannerConfig),
-    ],
-    external,
-  },
-
-  {
-    input: 'src/index.js',
-    output: {
-      file: 'dist/jpath.browser.js',
-      format: 'umd',
-      exports: 'named',
-      name: 'JPath',
-    },
-    plugins: [
-      resolve({
-        preferBuiltins: true,
-      }),
-      babel({
-        exclude: 'node_modules/**',
-        presets: [
-          [ '@babel/preset-env', {
-            modules: false,
-            useBuiltIns: 'usage',
-            corejs: { version: 3, shippedProposals: true },
-          } ],
-        ],
-      }),
-      terser({ output: {
-        comments: false,
-      } }),
       banner(bannerConfig),
     ],
     external,
