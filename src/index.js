@@ -29,7 +29,7 @@ export function execute (path, data, { operators, debug, cache = new Map } = {})
   return compile(path, { operators, debug, cache })(data);
 }
 
-export function verbose (path, data, { operators }) {
+export function verbose (path, data, { operators } = {}) {
   const prevDebug = Debugger.enabled;
   Debugger.enable(true);
   const ast = parse(path, { operators });
