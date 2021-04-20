@@ -342,7 +342,8 @@ export default function lex (tokens, { operators, debug } = {}) {
           statement.push(new Filter(scanStatement('filter', 0)));
           continue;
         }
-        wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
+        if (peek()) wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
+        else wtf('Unexpected end of path following a filter operator.');
       }
 
       if (isBracketClose() || isParenClose() || isMapClose()) {
