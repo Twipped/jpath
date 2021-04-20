@@ -60,13 +60,7 @@ export const Debugger = {
   },
 
   enter (name, extra) {
-    const frame = {
-      name,
-      children: [],
-      path: [],
-      touched: new Set(),
-      ...extra,
-    };
+    const frame = { name, children: [], ...extra };
     const prev = debugStack[debugStack.length - 1];
     if (prev) prev.children.push(frame);
     debugStack.push(frame);
@@ -76,12 +70,6 @@ export const Debugger = {
     const frame = debugStack.pop();
     frame.result = result;
     return frame;
-  },
-
-  touch ({ key }) {
-    if (!debugEnabled) return;
-    const frame = debugStack[debugStack.length - 1];
-    frame.touched.add(key);
   },
 };
 
@@ -111,13 +99,7 @@ export class Unit {
 
   make () {
     const fn = this.build();
-    return (data) => fn({
-      root: data,
-      parent: data,
-      scope: data,
-      path: [],
-      current: [ data ],
-    });
+    return (data) => fn({ root: data, scope: data, current: [ data ] });
   }
 }
 
@@ -132,10 +114,7 @@ export class Root extends Unit {
 
 export class Scope extends Unit {
   build () {
-    return named('Scope', ({ scope, path }) => {
-      Debugger.touch(path);
-      return (isUndefinedOrNull(scope) ? [] : [ scope ]);
-    });
+    return named('Scope', ({ scope }) => (isUndefinedOrNull(scope) ? [] : [ scope ]));
   }
 
   toString () { return '@'; }
@@ -219,16 +198,8 @@ export class Nested extends Unit {
     if (unit instanceof Unit) unit = unit.build();
     else return () => [];
 
-    return named('Nested', ({ root, scope, path, current }) => current.reduce((results, item, index) => {
-      const output = unit({
-        root,
-        parent: scope,
-        scope: item,
-        path,
-        current: [ item ],
-        key: index,
-        index,
-      });
+    return named('Nested', ({ root, current }) => current.reduce((results, item, index) => {
+      const output = unit({ root, scope: item, current: [ item ], key: index, index });
       if (output.length) results.push(output);
       return results;
     }, []));
@@ -267,8 +238,7 @@ export class Descend extends Unit {
 
     if (isString(unit) || isNumber(unit)) {
       return named(`Descend[${unit}]`,
-        ({ current, path }) => current.reduce((results, item) => {
-          Debugger.touch([ ...path, unit ]);
+        ({ current }) => current.reduce((results, item) => {
           const value = select(item, unit);
           if (isNotUndefinedOrNull(value)) results.push(value);
           return results;
@@ -280,8 +250,8 @@ export class Descend extends Unit {
 
     if (unit instanceof Filter) {
       unit = unit.build();
-      return named('Descend>Filter', ({ scope, current, ...props }) => current.reduce((results, item) => {
-        const items = unit({ ...props, parent: scope, scope: item, current: ensureArray(item) });
+      return named('Descend>Filter', (props) => props.current.reduce((results, item) => {
+        const items = unit({ ...props, scope: item, current: ensureArray(item) });
         results.push(...items);
         return results;
       }, []));
@@ -291,8 +261,8 @@ export class Descend extends Unit {
     if (unit instanceof Unit) unit = unit.build();
     if (!isFunction(unit)) throw new Error('Descend did not receive a valid target unit');
 
-    return named('Descend', ({ scope, current, path, ...props }) => current.reduce((results, item) => {
-      let targetKeys = unit({ ...props, parent: scope, scope: item, path, current: keys(item) });
+    return named('Descend', (props) => props.current.reduce((results, item) => {
+      let targetKeys = unit({ ...props, scope: item, current: keys(item) });
       if (mode === 'union') targetKeys = targetKeys[0];
       for (const targetKey of targetKeys) {
         const targetValue = select(item, targetKey);
@@ -357,7 +327,7 @@ export class Recursive extends Unit {
 
     if (unit instanceof Filter) {
       unit = unit.unit.build();
-      return named('RecursiveFilter', ({ current, scope, ...props }) => {
+      return named('RecursiveFilter', (props) => {
 
         const results = [];
         const seen = new Set();
@@ -365,13 +335,13 @@ export class Recursive extends Unit {
           if (!isMappable(item) || seen.has(item)) return;
           seen.add(item); // this is to prevent circular reference loops
 
-          const matches = unit({ ...props, parent: scope, scope: item, current: [ item ], key }).filter(isNotUndefinedOrNull).filter(truthy).length;
+          const matches = unit({ ...props, scope: item, current: [ item ], key }).filter(isNotUndefinedOrNull).filter(truthy).length;
           if (matches) results.push(item);
 
           map(item, walk);
         }
 
-        current.map();
+        props.current.map(walk);
         return results;
       });
     }
