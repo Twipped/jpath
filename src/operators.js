@@ -37,45 +37,45 @@ var collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base'
 
 
 export const DEFAULT_OPERATORS = {
+  '&&':       [ 'r', (seta, setb) => (seta.filter(truthy).length ? setb : seta), 7 ],
+  '||':       [ 'r', (seta, setb) => (seta.filter(truthy).length ? seta : setb), 6 ],
+  '??':       [ 'r', (seta, setb) => ( seta.length ? seta : setb ), 5 ],
+
   '*':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...values(item)) : push(items, item)), []) ],
   '~':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...keys(item)) : push(items, item)), []) ],
 
-  '===':      [ 0, ([ a ], [ b ]) => bool(a === b) ],
-  '==':       [ 0, ([ a ], [ b ]) => bool(a  == b) ], // eslint-disable-line eqeqeq
-  '!==':      [ 0, ([ a ], [ b ]) => bool(a !== b) ],
-  '!=':       [ 0, ([ a ], [ b ]) => bool(a !=  b) ], // eslint-disable-line eqeqeq
-  '<=':       [ 0, ([ a ], [ b ]) => bool(a <=  b) ],
-  '<':        [ 0, ([ a ], [ b ]) => bool(a  <  b) ],
-  '>=':       [ 0, ([ a ], [ b ]) => bool(a >=  b) ],
-  '>':        [ 0, ([ a ], [ b ]) => bool(a  >  b) ],
-  '-':        [ 0, ([ a ], [ b ]) => [ Number(a)  -  Number(b) ] ],
-  '+':        [ 0, ([ a ], [ b ]) => [ Number(a)  +  Number(b) ] ],
+  '===':      [ 0, ([ a ], [ b ]) => bool(a === b), 11 ],
+  '==':       [ 0, ([ a ], [ b ]) => bool(a  == b), 11 ], // eslint-disable-line eqeqeq
+  '!==':      [ 0, ([ a ], [ b ]) => bool(a !== b), 11 ],
+  '!=':       [ 0, ([ a ], [ b ]) => bool(a !=  b), 11 ], // eslint-disable-line eqeqeq
+  '<=':       [ 0, ([ a ], [ b ]) => bool(a <=  b), 12 ],
+  '<':        [ 0, ([ a ], [ b ]) => bool(a  <  b), 12 ],
+  '>=':       [ 0, ([ a ], [ b ]) => bool(a >=  b), 12 ],
+  '>':        [ 0, ([ a ], [ b ]) => bool(a  >  b), 12 ],
+  '-':        [ 0, ([ a ], [ b ]) => [ Number(a)  -  Number(b) ], 14 ],
+  '+':        [ 0, ([ a ], [ b ]) => [ Number(a)  +  Number(b) ], 14 ],
 
-  '&&':       [ 0, (seta, setb) => (seta.filter(truthy).length ? setb : seta) ],
-  '||':       [ 0, (seta, setb) => (seta.filter(truthy).length ? seta : setb) ],
-  '??':       [ 0, (seta, setb) => ( seta.length ? seta : setb ) ],
-
-  '!!':       [ -1, (set) => bool( set.filter(falsey).length) ],
-  '!':        [ -1, (set) => bool(!set.filter(falsey).length) ],
+  '!!':       [ -1, (set) => bool( set.filter(falsey).length), 17 ],
+  '!':        [ -1, (set) => bool(!set.filter(falsey).length), 17 ],
 
   is:    [ 0, (seta, setb) => {
     const m = intersect(seta, setb).length;
     return bool(m === seta.length && m === setb.length);
-  } ],
-  in:         [ 0, (seta, setb) => intersect(seta, setb) ],
-  not:        [ 0, (seta, setb) => difference(seta, setb) ],
-  subset:     [ 0, (seta, setb) => (intersect(seta, setb).length === seta.length ? seta : []) ],
-  size:       [ 0, (seta, setb)   => bool(seta.length === setb.length) ],
-  typeof:     [ 0, ([ a ], [ b ]) => bool(typeof a === typeof b) ],
-  ntypeof:    [ 0, ([ a ], [ b ]) => bool(typeof a !== typeof b) ],
-  mod:        [ 0, (set, [ b ])   => set.map((a) => a % b) ],
-  pow:        [ 0, (set, [ b ])   => set.map((a) => Math.pow(a, b)) ],
-  join:       [ 0, (set, [ del ]) => [ set.join(del) ] ],
-  split:      [ 0, (set, [ del ]) => set.reduce((results, a) => ( isString(a) ? push(results, a.split(del)) : results)) ],
-  add:        [ 0, (set, [ b ])   => set.map((a) => a + b) ],
-  sub:        [ 0, (set, [ b ])   => set.map((a) => a - b) ],
-  mul:        [ 0, (set, [ b ])   => set.map((a) => a * b) ],
-  div:        [ 0, (set, [ b ])   => set.map((a) => a / b) ],
+  }, 17 ],
+  in:         [ 0, (seta, setb) => intersect(seta, setb), 17 ],
+  not:        [ 0, (seta, setb) => difference(seta, setb), 17 ],
+  subset:     [ 0, (seta, setb) => (intersect(seta, setb).length === seta.length ? seta : []), 2 ],
+  size:       [ 0, (seta, setb)   => bool(seta.length === setb.length), 2 ],
+  typeof:     [ 0, ([ a ], [ b ]) => bool(typeof a === typeof b), 17 ],
+  ntypeof:    [ 0, ([ a ], [ b ]) => bool(typeof a !== typeof b), 17 ],
+  exp:        [ 0, (set, [ b ])   => set.map((a) => a ** b), 16 ],
+  add:        [ 0, (set, [ b ])   => set.map((a) => a + b), 14 ],
+  sub:        [ 0, (set, [ b ])   => set.map((a) => a - b), 14 ],
+  mul:        [ 0, (set, [ b ])   => set.map((a) => a * b), 15 ],
+  div:        [ 0, (set, [ b ])   => set.map((a) => a / b), 15 ],
+  mod:        [ 0, (set, [ b ])   => set.map((a) => a % b), 15 ],
+  join:       [ 0, (set, [ del ]) => [ set.join(del) ], 17 ],
+  split:      [ 0, (set, [ del ]) => set.reduce((results, a) => ( isString(a) ? push(results, a.split(del)) : results)), 17 ],
 
   keys:       [ -1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...keys(item)) : items), []) ],
   values:     [ -1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...values(item)) : items), []) ],

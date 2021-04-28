@@ -150,6 +150,14 @@ const testcases = {
     BRACKET_CLOSE(),
   ],
 
+  'foo ?? bar': [
+    IDENTIFIER('foo'),
+    WHITESPACE(),
+    SYMBOL('??'),
+    WHITESPACE(),
+    IDENTIFIER('bar'),
+  ],
+
 };
 
 

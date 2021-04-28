@@ -606,8 +606,11 @@ export class Mapper extends Unit {
 
 export class Operand extends Unit {
 
-  constructor (operator = null, arity, fn = null, left = null, right = null) {
-    super({ operator, arity, fn, left, right });
+  constructor (operator = null, arity, fn = null, ...ops) {
+    let precedence = 0;
+    if (isNumber(ops[0])) precedence = ops.shift();
+    const [ left = null, right = null ] = ops;
+    super({ operator, arity, fn, precedence, left, right });
   }
 
   build () {
@@ -656,6 +659,45 @@ export class Operand extends Unit {
       return operator;
     // no default
     }
+  }
+}
+
+export class Reduce extends Unit {
+
+  constructor (operator = null, fn = null, ...units) {
+    super({ operator, fn, units });
+  }
+
+  push (unit) {
+    if (unit instanceof Statement) {
+      if (!unit.length) return;
+      else if (unit.length === 1) unit = unit.units[0];
+    }
+    if (unit instanceof Reduce) {
+      this.units.push(...unit.units);
+    } else {
+      this.units.push(unit);
+    }
+  }
+
+  build () {
+    const { fn } = this;
+    const [ first, ...units ] = this.units
+      .map((u) => ((u instanceof Unit) ? u.build() : u))
+      .filter(isFunction);
+
+    return named('Reduce', (props) => {
+      let current = first(props);
+      for (const unit of units) {
+        const res = unit({ ...props, current });
+        current = ensureArray(fn(current, res));
+      }
+      return current;
+    });
+  }
+
+  toString () {
+    return this.units.join(' ' + this.operator + ' ');
   }
 }
 

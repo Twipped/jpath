@@ -39,6 +39,7 @@ import {
   Mapper,
   RegularExpression,
   Hashmap,
+  Reduce,
 } from './taxonomy.js';
 
 import {
@@ -177,9 +178,9 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         if (next(T_OPERATOR)) {
           if (tok.symbol) {
-            const [ opType, fn ] = operators[contents];
+            const [ opType, fn, precedence = 0 ] = operators[contents];
             if (opType === 1) {
-              statement.push(new Recursive(new Operand(contents, opType, fn)));
+              statement.push(new Recursive(new Operand(contents, opType, fn, precedence)));
               continue;
             }
 
@@ -228,7 +229,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
       if (isOperator()) {
         if (!operators[contents]) wtf(`Unknown operator found: "${contents}"`);
-        const [ opType, fn ] = operators[contents];
+        const [ opType, fn, precedence = 0 ] = operators[contents];
 
         // if the operator is a word and immediately follows a descent token then
         // this is trying to access a named property, not perform an operation.
@@ -240,7 +241,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
         // postfix unary
         if (opType === 1) {
-          statement.push(new Operand(contents, opType, fn));
+          statement.push(new Operand(contents, opType, fn, precedence));
           continue;
         }
 
@@ -263,6 +264,19 @@ export default function lex (tokens, { operators, debug } = {}) {
           }
         }
 
+        // reduction operator
+        if (opType === 'r') {
+          if (!statement.length) {
+            wtf(`Unexpected operator, "${contents}". Only prefix operators may be used at the start of a statement`, { code: E_BAD_OPERATOR });
+          }
+
+          statement.type = 'reduce';
+          const o = new Reduce(contents, fn);
+          o.push(statement);
+          o.push(scanStatement('reduce', depth + 1));
+          return o;
+        }
+
         // infix binary
         if (opType === 0) {
           if (!statement.length) {
@@ -270,9 +284,21 @@ export default function lex (tokens, { operators, debug } = {}) {
           }
 
           statement.type = 'operand';
-          const o = new Operand(contents, opType, fn);
-          o.left = statement;
+          const o = new Operand(contents, opType, fn, precedence);
+          o.left = statement.length > 1 ? statement : statement.units[0];
           o.right = scanStatement('operand', depth + 1);
+          if (o.right instanceof Reduce) {
+            const r = o.right;
+            o.right = r.units.shift();
+            r.units.unshift(o);
+            return r;
+          }
+          if (o.right instanceof Operand && o.right.precedence < o.precedence) {
+            const p = o.right;
+            o.right = p.left;
+            p.left = o;
+            return p;
+          }
           return o;
         }
 
@@ -282,7 +308,7 @@ export default function lex (tokens, { operators, debug } = {}) {
             wtf('Unexpected prefix operator mid-statement.', { code: E_BAD_OPERATOR });
           }
 
-          const o = new Operand(contents, opType, fn);
+          const o = new Operand(contents, opType, fn, precedence);
           o.right = scanStatement('operand', depth + 1);
           statement.push(o);
           continue;

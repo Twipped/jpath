@@ -23,6 +23,7 @@ import {
   Union,
   Filter,
   Operand,
+  Reduce,
   Mapper,
   RegularExpression,
   Hashmap,
@@ -326,9 +327,7 @@ const testcases = {
   'store mod 0 title': new Operand(
     'mod',
     ...OPS.mod,
-    new Statement('operand', [
-      new Descend('store'),
-    ]),
+    new Descend('store'),
     new Statement('operand', [
       new Descend(0),
       new Descend('title'),
@@ -429,6 +428,50 @@ const testcases = {
       new Literal('1'),
     ],
   ]),
+
+  'foo ?? bar ?? baz': new Reduce(
+    '??',
+    OPS['??'][1],
+    new Descend('foo'),
+    new Descend('bar'),
+    new Descend('baz'),
+  ),
+
+  'foo > 0 || bar': new Reduce(
+    '||',
+    OPS['||'][1],
+    new Operand(
+      '>',
+      ...OPS['>'],
+      new Descend('foo'),
+      new Literal(0),
+    ),
+    new Descend('bar'),
+  ),
+
+  'foo || 0 > bar': new Reduce(
+    '||',
+    OPS['||'][1],
+    new Descend('foo'),
+    new Operand(
+      '>',
+      ...OPS['>'],
+      new Literal(0),
+      new Descend('bar'),
+    ),
+  ),
+
+  '3 add 4 mul 5': new Operand(
+    'add',
+    ...OPS.add,
+    new Literal(3),
+    new Operand(
+      'mul',
+      ...OPS.mul,
+      new Literal(4),
+      new Literal(5),
+    ),
+  ),
 
 };
 
