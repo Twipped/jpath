@@ -37,6 +37,10 @@ const push = (arr, ...items) => { arr.push(...items); return arr; };
 
 const IDENT_MATCH = /^[a-zA-Z$_][a-zA-Z0-9$_]*$/;
 
+export function isSafeIdent (input) {
+  return !!IDENT_MATCH.exec(input);
+}
+
 // function has (collection, key) {
 //   if (isArray(collection) || isObject(collection, true)) return typeof collection[key] !== 'undefined';
 //   if (isMap(collection)) return map.has(key);
@@ -59,9 +63,14 @@ export const Debugger = {
     debugStack = [];
   },
 
-  enter (name, extra) {
+  enter ({ name, step, ...extra } = {}) {
     const frame = { name, children: [], ...extra };
     const prev = debugStack[debugStack.length - 1];
+    if (prev && step) {
+      frame.steps = [ ...prev.steps, step ];
+    } else if (step) {
+      frame.steps = [ step ];
+    } else frame.steps = [];
     if (prev) prev.children.push(frame);
     debugStack.push(frame);
   },
@@ -83,8 +92,12 @@ export class Unit {
       this.build = () => {
         const fn = this._build();
         return (p) => {
-          Debugger.enter(fn.displayName || fn.name || 'Anon', { input: p.current, scope: p.scope });
-          // console.log(p.current);
+          Debugger.enter({
+            name: fn.displayName || fn.name || 'Anon',
+            step: this.toString(),
+            input: p.current,
+            scope: p.scope,
+          });
           const res = fn(p);
           Debugger.exit(res);
           return res;
@@ -99,7 +112,12 @@ export class Unit {
 
   make () {
     const fn = this.build();
-    return (data) => fn({ root: data, scope: data, current: [ data ] });
+    return (data) => fn({
+      root: data,
+      scope: data,
+      scopePath: [],
+      current: [ data ],
+    });
   }
 }
 

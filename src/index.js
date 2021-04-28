@@ -35,8 +35,9 @@ export function verbose (path, data, { operators } = {}) {
   Debugger.enable(true);
   const ast = parse(path, { operators });
   const fn = ast.make();
-  Debugger.enter('verbose');
+  Debugger.enter();
   const result = Debugger.exit(fn(data));
+  result.ast = ast;
   Debugger.enable(prevDebug);
   return result;
 }
