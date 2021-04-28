@@ -28,7 +28,7 @@ const testcases = {
   '$..book[?(@.isbn)]': '$..book[?(@.isbn)]',
   '$..book.?(@.isbn)': '$..book.?(@.isbn)',
   '$..book[?(@.price<10)]': '$..book[?(@.price < 10)]',
-  '$..[?(@.price<10)]': '$..?(@.price < 10)',
+  '$..[?(@.price<10)]': '$..[?(@.price < 10)]',
   '$..*': '$..*',
   '$..[*]': '$..*',
   'store* $ book': 'store.*.$.book',

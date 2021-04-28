@@ -410,10 +410,6 @@ export class Recursive extends Unit {
       return '..(' + unit.toString() + ')';
     }
 
-    if (unit instanceof Filter) {
-      return '..' + unit.toString();
-    }
-
     if (unit instanceof Unit) return '..[' + unit.toString() + ']';
     return '';
   }
