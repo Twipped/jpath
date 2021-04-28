@@ -240,12 +240,6 @@ export default function tokenizer (input, { operators = {} } = {}) {
       return true;
     }
 
-    if (char === QUESTION) {
-      token(T_FILTER, '?');
-      move();
-      return true;
-    }
-
     if (char === COLON) {
       token(T_SLICE, ':');
       move();
@@ -278,6 +272,13 @@ export default function tokenizer (input, { operators = {} } = {}) {
         return true;
       }
     }
+
+    if (char === QUESTION) {
+      token(T_FILTER, '?');
+      move();
+      return true;
+    }
+
 
   }
 
