@@ -38,6 +38,8 @@ const push = (arr, ...items) => { arr.push(...items); return arr; };
 const IDENT_MATCH = /^[a-zA-Z$_][a-zA-Z0-9$_]*$/;
 
 export function isSafeIdent (input) {
+  if (isNumber(input)) return true;
+  if (!isString(input)) return false;
   return !!IDENT_MATCH.exec(input);
 }
 
@@ -106,7 +108,7 @@ export class Unit {
     }
   }
 
-  build () { return named('Unit', (v) => v); }
+  build () { return named('Unit', ({ current }) => current); }
 
   toString () { return ''; }
 

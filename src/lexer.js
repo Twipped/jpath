@@ -24,6 +24,7 @@ import {
 } from './tokenizer.js';
 
 import {
+  Unit,
   Statement,
   Root,
   Scope,
@@ -401,7 +402,7 @@ export default function lex (tokens, { operators, debug } = {}) {
     }
 
     if (statement.length === 1) return statement.units[0];
-    if (statement.length === 0) wtf('Unexpected end of statement (statement is empty).', { code: E_UNEXPECTED_EOL });
+    if (!statement.length) return new Unit();
     return statement;
   }
 
