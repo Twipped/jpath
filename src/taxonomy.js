@@ -9,6 +9,9 @@ import {
   isString,
   isNumber,
   isFunction,
+  isPrimitive,
+  avg,
+  sum,
   map,
   keys,
   truthy,
@@ -108,6 +111,8 @@ export class Unit {
     }
   }
 
+  get weight () { return 0; }
+
   build () { return named('Unit', ({ current }) => current); }
 
   toString () { return ''; }
@@ -129,6 +134,8 @@ export class Root extends Unit {
     return named('Root', ({ root }) => (isUndefinedOrNull(root) ? [] : [ root ]));
   }
 
+  get weight () { return 1; }
+
   toString () { return '$'; }
 }
 
@@ -136,6 +143,8 @@ export class Scope extends Unit {
   build () {
     return named('Scope', ({ scope }) => (isUndefinedOrNull(scope) ? [] : [ scope ]));
   }
+
+  get weight () { return 1; }
 
   toString () { return '@'; }
 }
@@ -145,6 +154,8 @@ export class Key extends Unit {
     return named('Key', ({ key }) => (isUndefinedOrNull(key) ? [] : [ key ]));
   }
 
+  get weight () { return 1; }
+
   toString () { return '#'; }
 }
 
@@ -152,6 +163,8 @@ export class Index extends Unit {
   build () {
     return named('Index', ({ index }) => (isUndefinedOrNull(index) ? [] : [ index ]));
   }
+
+  get weight () { return 1; }
 
   toString () { return '%'; }
 }
@@ -190,6 +203,10 @@ export class Statement extends Unit {
     });
   }
 
+  get weight () {
+    return sum(this.units.map((u) => u.weight || 1));
+  }
+
   toString () {
     let result = '';
     for (let piece of this.units) {
@@ -225,6 +242,10 @@ export class Nested extends Unit {
     }, []));
   }
 
+  get weight () {
+    return sum(this.units.map((u) => u.weight || 1));
+  }
+
   toString () {
     return '(' + this.unit + ')';
   }
@@ -241,6 +262,11 @@ export class Literal extends Unit {
     const { value } = this;
     if (isUndefinedOrNull(value)) return named('Null Literal', () => []);
     return named(`Literal[${value}]`, () => [ value ]);
+  }
+
+  get weight () {
+    if (!isString(this.unit)) return 1;
+    return Math.round(this.unit.length / 10);
   }
 
   toString () { return JSON.stringify(this.value); }
@@ -302,6 +328,12 @@ export class Descend extends Unit {
       }
       return results;
     }, []));
+  }
+
+  get weight () {
+    if (isString(this.unit)) return Math.ceil(this.unit.length / 15);
+    if (isPrimitive(this.unit)) return 1;
+    return this.unit.weight || 0;
   }
 
   toString () {
@@ -427,6 +459,12 @@ export class Recursive extends Unit {
     }
   }
 
+  get weight () {
+    if (isString(this.unit)) return Math.round(this.unit.length / 10);
+    if (isPrimitive(this.unit)) return 1;
+    return this.unit.weight || 0;
+  }
+
   toString () {
     let { unit } = this;
 
@@ -487,6 +525,10 @@ export class Slice extends Unit {
     });
   }
 
+  get weight () {
+    return sum(this.units.map((u) => u && u.weight || 0));
+  }
+
   toString () {
     return this.units.map((u) => (u ? String(u) : '')).join(':');
   }
@@ -521,6 +563,10 @@ export class Union extends Unit {
     });
   }
 
+  get weight () {
+    return sum(this.units.map((u) => u && u.weight || 1)) + 1;
+  }
+
   toString () {
     return this.units.join(',');
   }
@@ -549,8 +595,17 @@ export class Hashmap extends Unit {
     return Array.from(this.properties.entries());
   }
 
+  map (fn) {
+    return Array.from(this.properties.entries(), fn);
+  }
+
+  get weight () {
+    const entries = this.map(([ keyEx, valueEx ]) => (keyEx.weight || 1) + (valueEx.weight || 1));
+    return sum(entries);
+  }
+
   build () {
-    const entries = this.entries.map(([ keyEx, valueEx ]) => [ keyEx.build(), valueEx.build() ]);
+    const entries = this.map(([ keyEx, valueEx ]) => [ keyEx.build(), valueEx.build() ]);
 
     return named('Hashmap', (props) => {
       const obj = {};
@@ -564,7 +619,7 @@ export class Hashmap extends Unit {
   }
 
   toString () {
-    return this.entries.map((kv) => kv.join(': ')).join(', ');
+    return this.map((kv) => kv.join(': ')).join(', ');
   }
 }
 Hashmap.from = (input) => {
@@ -610,6 +665,10 @@ export class Filter extends Unit {
     }, []));
   }
 
+  get weight () {
+    return (this.unit.weight || 1) + 1;
+  }
+
   toString () {
     return '?(' + this.unit + ')';
   }
@@ -631,6 +690,10 @@ export class Mapper extends Unit {
       if (output.length) results.push(...output);
       return results;
     }, []));
+  }
+
+  get weight () {
+    return (this.unit.weight || 1) + 1;
   }
 
   toString () {
@@ -683,6 +746,12 @@ export class Operand extends Unit {
     }
   }
 
+  get weight () {
+    if (this.arity === 1) return 1;
+    if (this.arity === -1) return this.right.weight + 1;
+    return (this.left.weight || 1) + 1 + (this.right.weight || 1);
+  }
+
   toString () {
     const { operator, arity, left, right } = this;
 
@@ -730,6 +799,10 @@ export class Reduce extends Unit {
     });
   }
 
+  get weight () {
+    return sum(this.units.map((u) => u.weight || 1)) + 1;
+  }
+
   toString () {
     return this.units.join(' ' + this.operator + ' ');
   }
@@ -749,6 +822,10 @@ export class RegularExpression extends Unit {
       }
       return results;
     }, []));
+  }
+
+  get weight () {
+    return Math.ceil(this.regex.toString().length / 10);
   }
 
   toString () {
