@@ -383,9 +383,7 @@ export default function lex (tokens, { operators, debug } = {}) {
 
       if (isBracketOpen()) {
         const substatement = scanStatement('descend', 0);
-        if (substatement instanceof Slice) {
-          statement.push(substatement);
-        } else if (substatement instanceof Literal) {
+        if (substatement instanceof Literal) {
           statement.push(new Descend(substatement.value));
         } else {
           statement.push(new Descend(substatement));

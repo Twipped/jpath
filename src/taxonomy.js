@@ -193,7 +193,7 @@ export class Statement extends Unit {
   toString () {
     let result = '';
     for (let piece of this.units) {
-      if (piece instanceof Operand && piece.arity !== 1) {
+      if (piece instanceof Slice || (piece instanceof Operand && piece.arity !== 1)) {
         piece = '(' + piece + ')';
         result += (result && ' ') + piece;
       } else {
@@ -266,13 +266,25 @@ export class Descend extends Unit {
       );
     }
 
-    if (unit instanceof Slice) return named('Descend[Slice]', unit.build());
-
-    if (unit instanceof Filter) {
+    if (unit instanceof Filter ) {
       unit = unit.build();
       return named('Descend>Filter', (props) => props.current.reduce((results, item) => {
         const items = unit({ ...props, scope: item, current: ensureArray(item) });
         results.push(...items);
+        return results;
+      }, []));
+    }
+
+    if (unit instanceof Slice) {
+      unit = unit.build();
+      return named('Descend>Slice', (props) => props.current.reduce((results, item) => {
+        if (isString(item)) {
+          const str = unit({ ...props, scope: item, current: item.split('') }).join('');
+          if (str) results.push(str);
+        } else if (isArray(item)) {
+          const items = unit({ ...props, scope: item, current: item });
+          results.push(...items);
+        }
         return results;
       }, []));
     }
@@ -348,7 +360,6 @@ export class Recursive extends Unit {
     if (unit instanceof Filter) {
       unit = unit.unit.build();
       return named('RecursiveFilter', (props) => {
-
         const results = [];
         const seen = new Set();
         function walk (item, key) {
@@ -357,6 +368,34 @@ export class Recursive extends Unit {
 
           const matches = unit({ ...props, scope: item, current: [ item ], key }).filter(isNotUndefinedOrNull).filter(truthy).length;
           if (matches) results.push(item);
+
+          map(item, walk);
+        }
+
+        props.current.map(walk);
+        return results;
+      });
+    }
+
+    if (unit instanceof Slice) {
+      unit = unit.build();
+      return named('RecursiveSlice', (props) => {
+        const results = [];
+        const seen = new Set();
+        function walk (item, key) {
+          if (isString(item)) {
+            const str = unit({ ...props, scope: item, current: item.split(''), key }).join('');
+            if (str) results.push(str);
+            return;
+          }
+
+          if (!isMappable(item) || seen.has(item)) return;
+          seen.add(item); // this is to prevent circular reference loops
+
+          if (isArray(item)) {
+            const items = unit({ ...props, scope: item, current: item, key });
+            results.push(...items);
+          }
 
           map(item, walk);
         }
@@ -392,7 +431,11 @@ export class Recursive extends Unit {
     let { unit } = this;
 
     if (unit instanceof Descend) {
-      unit = unit.unit;
+      if (unit.unit instanceof Operand) {
+        unit = unit.unit;
+      } else {
+        return '..' + unit.toString();
+      }
     }
 
     if (isString(unit)) {
@@ -411,6 +454,8 @@ export class Recursive extends Unit {
       if (unit.arity === 1) return '..' + unit.operator;
       return '..(' + unit.toString() + ')';
     }
+
+    if (unit instanceof Slice) return '..(' + unit.toString() + ')';
 
     if (unit instanceof Unit) return '..[' + unit.toString() + ']';
     return '';
@@ -435,42 +480,15 @@ export class Slice extends Unit {
     const units = this.units.map((unit) => (unit instanceof Unit ? unit.build() : unit));
 
     return named('Slice', (props) => {
-      const current = props.current.filter((item) => isArray(item));
-      let [ start, stop, step ] = units.map((unit) => (isFunction(unit) ? unit(props) : [])).map((a) => a[0]);
-      start = isUndefinedOrNull(start) ? undefined : parseFloat(start);
-      stop =  isUndefinedOrNull(stop) ? undefined : parseFloat(stop);
-      step =  isUndefinedOrNull(step) ? undefined : parseFloat(step);
+      const { current } = props;
+      const [ start, stop, step ] = units.map((unit) => (isFunction(unit) ? unit(props) : [])).map((a) => a[0]);
 
-      if (!step) {
-        return current.reduce((items, item) => (
-          isArray(item) || isString(item) ? push(items, ...item.slice(start, stop)) : items
-        ), []);
-      }
-
-      return current.reduce((items, item) => {
-        if (!isArray(item) && !isString(item)) return items;
-        const len = item.length;
-        const first = start === undefined ? 0 : Math.max(0, start < 0 ? start + len : start);
-        const last = stop === undefined ? len - 1 : Math.min(stop < 0 ? stop + len : stop, len - 1);
-        const result = [];
-        if (step > 0) {
-          for (let i = first; i <= last; i += step) {
-            result.push(item[i]);
-          }
-        } else {
-          for (let i = last; i >= first; i += step) {
-            result.push(item[i]);
-          }
-        }
-
-        if (isString(item)) return push(items, result.join(''));
-        return push(items, ...result);
-      }, []).filter(isNotUndefinedOrNull);
+      return slice(current, start, stop, step);
     });
   }
 
   toString () {
-    return '[' + this.units.map((u) => (u ? String(u) : '')).join(':') + ']';
+    return this.units.map((u) => (u ? String(u) : '')).join(':');
   }
 }
 
@@ -743,4 +761,38 @@ function badUnit (source, unit, target = '', code = E_BAD_UNIT) {
   e.unit = unit;
   e.code = code;
   throw e;
+}
+
+function slice (collection, start, stop, step) {
+  if (isString(collection)) {
+    collection = collection.split('');
+  } else if (isObject(collection)) {
+    collection = Object.values(collection);
+  }
+
+  if (!collection.length) return [];
+
+  start = isUndefinedOrNull(start) ? undefined : parseFloat(start);
+  stop =  isUndefinedOrNull(stop)  ? undefined : parseFloat(stop);
+  step =  isUndefinedOrNull(step)  ? undefined : parseFloat(step);
+
+  if (!step) {
+    return collection.slice(start, stop);
+  }
+
+  const len = collection.length;
+  const first = start === undefined ? 0 : Math.max(0, start < 0 ? start + len : start);
+  const last = stop === undefined ? len - 1 : Math.min(stop < 0 ? stop + len : stop, len - 1);
+  const result = [];
+  if (step > 0) {
+    for (let i = first; i <= last; i += step) {
+      result.push(collection[i]);
+    }
+  } else {
+    for (let i = last; i >= first; i += step) {
+      result.push(collection[i]);
+    }
+  }
+
+  if (isString(collection)) return result.join('');
 }

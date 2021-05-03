@@ -88,7 +88,18 @@ const testcases = {
     ),
   ]),
 
-  '$..book[-1:]':           new Statement([
+  '$..book[-1:]': new Statement([
+    new Root(),
+    new Recursive('book'),
+    new Descend(
+      new Slice([
+        new Literal(-1),
+        null,
+      ]),
+    ),
+  ]),
+
+  '$..book (-1:)': new Statement([
     new Root(),
     new Recursive('book'),
     new Slice([
@@ -111,10 +122,12 @@ const testcases = {
   '$..book[:2]':            new Statement([
     new Root(),
     new Recursive('book'),
-    new Slice([
-      null,
-      new Literal(2),
-    ]),
+    new Descend(
+      new Slice([
+        null,
+        new Literal(2),
+      ]),
+    ),
   ]),
 
   '$..book[?(@.isbn)]':     new Statement([
@@ -161,6 +174,28 @@ const testcases = {
       new Descend(
         new Wildcard(),
       ),
+    ),
+  ]),
+
+  '$..[-1:]': new Statement([
+    new Root(),
+    new Recursive(
+      new Descend(
+        new Slice([
+          new Literal(-1),
+          null,
+        ]),
+      ),
+    ),
+  ]),
+
+  '$..(-1:)': new Statement([
+    new Root(),
+    new Recursive(
+      new Slice([
+        new Literal(-1),
+        null,
+      ]),
     ),
   ]),
 
