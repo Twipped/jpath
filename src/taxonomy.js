@@ -10,7 +10,6 @@ import {
   isNumber,
   isFunction,
   isPrimitive,
-  avg,
   sum,
   map,
   keys,
@@ -35,8 +34,6 @@ function select (collection, key) {
   if (isArray(collection) || isObject(collection, true)) return collection[key];
   if (isMap(collection)) return map.get(key);
 }
-
-const push = (arr, ...items) => { arr.push(...items); return arr; };
 
 const IDENT_MATCH = /^[a-zA-Z$_][a-zA-Z0-9$_]*$/;
 
@@ -122,7 +119,6 @@ export class Unit {
     return (data) => fn({
       root: data,
       scope: data,
-      scopePath: [],
       current: [ data ],
     });
   }
@@ -181,6 +177,15 @@ export class Statement extends Unit {
 
   push (unit) {
     this.units.push(unit);
+  }
+
+  remove (unit) {
+    if (isNumber(unit)) {
+      this.units.splice(unit, 1);
+    } else {
+      const index = this.units.indexOf(unit);
+      if (index > -1) this.units.splice(index, 1);
+    }
   }
 
   get length () {
@@ -320,7 +325,7 @@ export class Descend extends Unit {
     if (!isFunction(unit)) throw new Error('Descend did not receive a valid target unit');
 
     return named('Descend', (props) => props.current.reduce((results, item) => {
-      let targetKeys = unit({ ...props, scope: item, current: keys(item) });
+      let targetKeys = unit({ ...props, scope: item, current: Array.from(keys(item)) });
       if (mode === 'union') targetKeys = targetKeys[0];
       for (const targetKey of targetKeys) {
         const targetValue = select(item, targetKey);
@@ -514,6 +519,23 @@ export class Slice extends Unit {
     this.units.push(unit);
   }
 
+  remove (unit) {
+    if (isNumber(unit)) {
+      this.units.splice(unit, 1);
+    } else {
+      const index = this.units.indexOf(unit);
+      if (index > -1) this.units.splice(index, 1);
+    }
+  }
+
+  get length () {
+    return this.units.length;
+  }
+
+  reset () {
+    this.units = [];
+  }
+
   build () {
     const units = this.units.map((unit) => (unit instanceof Unit ? unit.build() : unit));
 
@@ -547,6 +569,23 @@ export class Union extends Unit {
       else if (unit.length === 1) unit = unit.units[0];
     }
     this.units.push(unit);
+  }
+
+  remove (unit) {
+    if (isNumber(unit)) {
+      this.units.splice(unit, 1);
+    } else {
+      const index = this.units.indexOf(unit);
+      if (index > -1) this.units.splice(index, 1);
+    }
+  }
+
+  get length () {
+    return this.units.length;
+  }
+
+  reset () {
+    this.units = [];
   }
 
   build () {
@@ -583,12 +622,27 @@ export class Hashmap extends Unit {
     if (keyEx instanceof Descend) {
       if (keyEx.unit instanceof Descend || keyEx.unit instanceof Literal) {
         keyEx = keyEx.unit;
-      } else if (isString(keyEx.unit)) {
+      } else if (isPrimitive(keyEx.unit)) {
         keyEx = new Literal(keyEx.unit);
       }
     }
     this.properties.set(keyEx, valueEx);
     return this;
+  }
+
+  remove (keyEx) {
+    if (isNumber(keyEx)) {
+      keyEx = Array.from(this.properties.values())[keyEx];
+    }
+    this.properties.delete(keyEx);
+  }
+
+  get length () {
+    return this.properties.size;
+  }
+
+  reset () {
+    this.properties = new Map;
   }
 
   get entries () {
@@ -783,6 +837,23 @@ export class Reduce extends Unit {
     }
   }
 
+  remove (unit) {
+    if (isNumber(unit)) {
+      this.units.splice(unit, 1);
+    } else {
+      const index = this.units.indexOf(unit);
+      if (index > -1) this.units.splice(index, 1);
+    }
+  }
+
+  get length () {
+    return this.units.length;
+  }
+
+  reset () {
+    this.units = [];
+  }
+
   build () {
     const { fn } = this;
     const [ first, ...units ] = this.units
@@ -790,12 +861,12 @@ export class Reduce extends Unit {
       .filter(isFunction);
 
     return named('Reduce', (props) => {
-      let current = first(props);
+      let seta = first(props);
       for (const unit of units) {
-        const res = unit({ ...props, current });
-        current = ensureArray(fn(current, res));
+        const setb = unit(props);
+        seta = ensureArray(fn(seta, setb));
       }
-      return current;
+      return seta;
     });
   }
 
@@ -872,4 +943,26 @@ function slice (collection, start, stop, step) {
   }
 
   if (isString(collection)) return result.join('');
+}
+
+export function identify (unit) {
+  if (!(unit instanceof Unit)) return false;
+  if (unit.constructor === Descend) return 'Descend';
+  if (unit.constructor === Statement) return 'Statement';
+  if (unit.constructor === Literal) return 'Literal';
+  if (unit.constructor === Root) return 'Root';
+  if (unit.constructor === Scope) return 'Scope';
+  if (unit.constructor === Operand) return 'Operand';
+  if (unit.constructor === Nested) return 'Nested';
+  if (unit.constructor === Recursive) return 'Recursive';
+  if (unit.constructor === Filter) return 'Filter';
+  if (unit.constructor === Slice) return 'Slice';
+  if (unit.constructor === Union) return 'Union';
+  if (unit.constructor === Hashmap) return 'Hashmap';
+  if (unit.constructor === Mapper) return 'Mapper';
+  if (unit.constructor === Reduce) return 'Reduce';
+  if (unit.constructor === Key) return 'Key';
+  if (unit.constructor === Index) return 'Index';
+  if (unit.constructor === RegularExpression) return 'RegularExpression';
+  return 'Unit';
 }
