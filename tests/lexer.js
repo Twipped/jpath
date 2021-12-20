@@ -508,6 +508,48 @@ const testcases = {
     ),
   ),
 
+  'foo[?(sizeof type)].bar': new Statement([
+    new Descend('foo'),
+    new Descend(new Filter(
+      new Operand(
+        'sizeof',
+        ...OPS.sizeof,
+        null,
+        new Descend('type'),
+      ),
+    )),
+    new Descend('bar'),
+  ]),
+
+  '(foo[?( !bar )]) baz': new Statement([
+    new Statement('substatement', [
+      new Descend('foo'),
+      new Descend(new Filter(
+        new Operand(
+          '!',
+          ...OPS['!'],
+          null,
+          new Descend('bar'),
+        ),
+      )),
+    ]),
+    new Descend('baz'),
+  ]),
+
+  '!foo[?(bar)].baz':  new Operand(
+    '!',
+    ...OPS['!'],
+    null,
+    new Statement('operand', [
+      new Descend('foo'),
+      new Descend(new Filter(
+        new Descend('bar'),
+      )),
+      new Descend('baz'),
+    ]),
+  ),
+
+
 };
 
 for (const [ path, expected ] of Object.entries(testcases)) {

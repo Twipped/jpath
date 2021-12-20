@@ -724,7 +724,7 @@ export class Filter extends Unit {
   }
 
   toString () {
-    return '?(' + this.unit + ')';
+    return '?(' + (this.unit || '*') + ')';
   }
 }
 

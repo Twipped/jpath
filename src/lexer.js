@@ -24,7 +24,6 @@ import {
 } from './tokenizer.js';
 
 import {
-  Unit,
   Statement,
   Root,
   Scope,
@@ -49,7 +48,6 @@ import {
   E_BAD_TOKEN,
   E_THATS_A_BUG,
   E_BAD_OPERATOR_FUNCTION,
-  E_UNEXPECTED_CLOSE,
 } from './wtf.js';
 
 // import { inspect } from 'util';
@@ -120,7 +118,7 @@ export default function lex (tokens, { operators, debug } = {}) {
     throw Object.assign(e, extra);
   }
 
-  function scanStatement (statementType, depth = 0) {
+  function scanStatementDenormalized (statementType, depth = 0) {
     const statement = new Statement(statementType);
 
     while (next()) {
@@ -311,6 +309,12 @@ export default function lex (tokens, { operators, debug } = {}) {
 
           const o = new Operand(contents, opType, fn, precedence);
           o.right = scanStatement('operand', depth + 1);
+          if (o.right instanceof Reduce) {
+            const r = o.right;
+            o.right = r.units.shift();
+            r.units.unshift(o);
+            return r;
+          }
           statement.push(o);
           continue;
         }
@@ -332,7 +336,11 @@ export default function lex (tokens, { operators, debug } = {}) {
           mode = statement.type = 'union';
           unit = new Union();
         }
-        unit.push(statement);
+        if (statement.units.length === 1) {
+          unit.push(...statement.units);
+        } else {
+          unit.push(statement);
+        }
 
         do {
           if ((isUnion() && mode === 'slice')) {
@@ -357,7 +365,8 @@ export default function lex (tokens, { operators, debug } = {}) {
             unit.add(...segments);
             segments = [];
           } else {
-            unit.push(scanStatement(mode, depth + 1));
+            const st = scanStatement(mode, depth + 1);
+            if (st || mode === 'slice') unit.push( st );
           }
 
         } while (next(T_SLICE) || next(T_UNION));
@@ -367,6 +376,9 @@ export default function lex (tokens, { operators, debug } = {}) {
       if (isFilter()) {
         if (next(T_PAREN_OPEN)) {
           statement.push(new Filter(scanStatement('filter', 0)));
+          if (statementType === 'descend') {
+            return statement;
+          }
           continue;
         }
         if (peek()) wtf(`Unexpected "${peek().contents}" (${T[peek().type]}) following a filter operator.`);
@@ -374,10 +386,6 @@ export default function lex (tokens, { operators, debug } = {}) {
       }
 
       if (isBracketClose() || isParenClose() || isMapClose()) {
-        if (statement.length === 1) {
-          return statement.units[0];
-        }
-        if (statement.length === 0 && !depth) wtf('Unexpected end of statement (statement is empty).', { code: E_UNEXPECTED_CLOSE });
         return statement;
       }
 
@@ -388,6 +396,7 @@ export default function lex (tokens, { operators, debug } = {}) {
         } else {
           statement.push(new Descend(substatement));
         }
+        next(T_BRACKET_CLOSE);
         continue;
       }
 
@@ -399,12 +408,20 @@ export default function lex (tokens, { operators, debug } = {}) {
       wtf(`Unexpected token while processing statement: "${tok.contents}" (${T[tok.type]})`);
     }
 
-    if (statement.length === 1) return statement.units[0];
-    if (!statement.length) return new Unit();
+    return statement;
+  }
+
+  function scanStatement (...args) {
+    let statement = scanStatementDenormalized(...args);
+    while (statement instanceof Statement && statement.length === 1) {
+      statement = statement.units[0];
+    }
+    if (statement instanceof Statement && !statement.length) return null;
     return statement;
   }
 
   const result = scanStatement('root', 0);
+  if (result instanceof Statement) result.type = 'root';
   if (!tokens.eof) {
     console.error({ remaining: tokens.remaining() }); // eslint-disable-line no-console
     wtf('There are still tokens left, how did we get here?', { code: E_THATS_A_BUG });
