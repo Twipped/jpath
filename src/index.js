@@ -6,11 +6,20 @@ import { Debugger } from './taxonomy.js';
 
 export * from './taxonomy.js';
 export { default as tokenize } from './tokenizer.js';
+export { DEFAULT_OPERATORS } from './operators.js';
 
 export function parse (path, { operators, debug } = {}) {
   operators = { ...DEFAULT_OPERATORS, ...operators };
   const tokens = tokenize(path, { operators, debug });
   return lex(tokens, { operators, debug });
+}
+
+export function parseSafe (...args) {
+  try {
+    return { ast: parse(...args), error: null };
+  } catch (error) {
+    return { ast: null, error };
+  }
 }
 
 export function compile (path, { operators, debug, cache } = {}) {
@@ -45,6 +54,7 @@ export function verbose (path, data, { operators } = {}) {
 export default {
   tokenize,
   parse,
+  parseSafe,
   compile,
   execute,
   verbose,
