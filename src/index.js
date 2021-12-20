@@ -34,6 +34,23 @@ export function compile (path, { operators, debug, cache } = {}) {
   return fn;
 }
 
+export function compileSafe (path, { operators, debug, cache } = {}) {
+
+  let fn = !debug && cache && cache.get && cache.get(path);
+  if (!fn) {
+    try {
+      const ast = parse(path, { operators, debug });
+      fn = ast.make();
+      cache && cache.set(path, fn);
+      return { fn, error: null };
+    } catch (error) {
+      return { fn: null, error };
+    }
+  }
+
+  return { fn, error: null };
+}
+
 const executeCache = new Map();
 export function execute (path, data, { operators, debug, cache = executeCache } = {}) {
   return compile(path, { operators, debug, cache })(data);
@@ -56,6 +73,7 @@ export default {
   parse,
   parseSafe,
   compile,
+  compileSafe,
   execute,
   verbose,
 };
