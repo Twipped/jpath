@@ -334,7 +334,7 @@ export class Descend extends Unit {
 
     if (unit instanceof Union) mode = 'union';
     if (unit instanceof Unit) unit = unit.build();
-    if (!isFunction(unit)) throw new Error('Descend did not receive a valid target unit');
+    if (!isFunction(unit)) throw new TypeError('Descend did not receive a valid target unit');
 
     return named('Descend', (props) => props.current.reduce((results, item) => {
       let targetKeys = unit({ ...props, scope: item, current: Array.from(keys(item)) });
@@ -812,7 +812,7 @@ export class Operand extends Unit {
 
   build () {
     let { operator, arity, fn, left, right } = this;
-    if (!fn) throw new Error(`"${operator}" is not a recognized operator.`);
+    if (!fn) throw new TypeError(`"${operator}" is not a recognized operator.`);
 
     switch (arity) {
     case -1:
