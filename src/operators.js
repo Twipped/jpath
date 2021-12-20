@@ -43,6 +43,8 @@ export const DEFAULT_OPERATORS = {
 
   '*':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...values(item)) : push(items, item)), []) ],
   '~':        [ 1, (set) => set.reduce((items, item) => (isMappable(item) ? push(items, ...keys(item)) : push(items, item)), []) ],
+  int:        [ -1, (set) => set.map(Number), 17 ],
+  str:        [ -1, (set) => set.map(String), 17 ],
 
   '===':      [ 0, ([ a ], [ b ]) => bool(a === b), 11 ],
   '==':       [ 0, ([ a ], [ b ]) => bool(a  == b), 11 ], // eslint-disable-line eqeqeq
