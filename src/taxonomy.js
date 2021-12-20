@@ -124,7 +124,6 @@ export class Unit {
   }
 }
 
-
 export class Root extends Unit {
   build () {
     return named('Root', ({ root }) => (isUndefinedOrNull(root) ? [] : [ root ]));
@@ -175,16 +174,25 @@ export class Statement extends Unit {
     super({ type, units });
   }
 
-  push (unit) {
-    this.units.push(unit);
+  push (...unit) {
+    this.units.push(...unit);
   }
 
-  remove (unit) {
+  remove (unit, all) {
     if (isNumber(unit)) {
-      this.units.splice(unit, 1);
+      this.units.splice(unit, all ? this.units.length : 1);
     } else {
       const index = this.units.indexOf(unit);
-      if (index > -1) this.units.splice(index, 1);
+      if (index > -1) this.units.splice(index, all ? this.units.length : 1);
+    }
+  }
+
+  replace (unit, ...newUnits) {
+    if (isNumber(unit)) {
+      this.units.splice(unit, 1, ...newUnits);
+    } else {
+      const index = this.units.indexOf(unit);
+      if (index > -1) this.units.splice(index, 1, ...newUnits);
     }
   }
 
@@ -215,7 +223,7 @@ export class Statement extends Unit {
   toString () {
     let result = '';
     for (let piece of this.units) {
-      if (piece instanceof Slice || (piece instanceof Operand && piece.arity !== 1)) {
+      if (piece instanceof Union || piece instanceof Slice || (piece instanceof Operand && piece.arity !== 1)) {
         piece = '(' + piece + ')';
         result += (result && ' ') + piece;
       } else {
@@ -281,6 +289,10 @@ export class Descend extends Unit {
 
   constructor (unit = null) {
     super({ unit });
+  }
+
+  set (newUnit) {
+    this.unit = newUnit;
   }
 
   build () {
@@ -368,6 +380,10 @@ export class Descend extends Unit {
 export class Recursive extends Unit {
   constructor (unit = null) {
     super({ unit });
+  }
+
+  set (newUnit) {
+    this.unit = newUnit;
   }
 
   build () {
@@ -519,12 +535,25 @@ export class Slice extends Unit {
     this.units.push(unit);
   }
 
-  remove (unit) {
+  remove (index) {
+    if (!isNumber(index)) {
+      index = this.units.indexOf(index);
+    }
+    if (index > -1) return;
+
+    if (index < this.units.length - 1) {
+      this.units[index] = null;
+    } else {
+      this.units.splice(index, this.units.length);
+    }
+  }
+
+  replace (unit, ...newUnits) {
     if (isNumber(unit)) {
-      this.units.splice(unit, 1);
+      this.units.splice(unit, 1, ...newUnits);
     } else {
       const index = this.units.indexOf(unit);
-      if (index > -1) this.units.splice(index, 1);
+      if (index > -1) this.units.splice(index, 1, ...newUnits);
     }
   }
 
@@ -563,20 +592,29 @@ export class Union extends Unit {
     super({ units });
   }
 
-  push (unit) {
+  push (...unit) {
     if (unit instanceof Statement) {
       if (!unit.length) return;
       else if (unit.length === 1) unit = unit.units[0];
     }
-    this.units.push(unit);
+    this.units.push(...unit);
   }
 
-  remove (unit) {
+  remove (unit, all) {
     if (isNumber(unit)) {
-      this.units.splice(unit, 1);
+      this.units.splice(unit, all ? this.units.length : 1);
     } else {
       const index = this.units.indexOf(unit);
-      if (index > -1) this.units.splice(index, 1);
+      if (index > -1) this.units.splice(index, all ? this.units.length : 1);
+    }
+  }
+
+  replace (unit, ...newUnits) {
+    if (isNumber(unit)) {
+      this.units.splice(unit, 1, ...newUnits);
+    } else {
+      const index = this.units.indexOf(unit);
+      if (index > -1) this.units.splice(index, 1, ...newUnits);
     }
   }
 
@@ -707,6 +745,14 @@ export class Filter extends Unit {
     super({ unit });
   }
 
+  set (newUnit) {
+    this.unit = newUnit;
+  }
+
+  clear () {
+    this.unit = null;
+  }
+
   build () {
     let { unit } = this;
     if (unit instanceof Unit) unit = unit.build();
@@ -800,6 +846,39 @@ export class Operand extends Unit {
     }
   }
 
+  push (unit) {
+    switch (this.arity) {
+    case -1:
+      this.right = unit;
+      return;
+    case 0:
+      if (!this.left) {
+        this.left = unit;
+        return;
+      }
+      if (!this.right) {
+        this.right = unit;
+        return;
+      }
+      this.left = this.right;
+      this.right = unit;
+      return;
+    default:
+      // nothing to do here.
+      return;
+    }
+  }
+
+  remove (oldUnit) {
+    if (oldUnit === 0 || this.left === oldUnit) this.left = null;
+    else if (oldUnit === 1 || this.right === oldUnit) this.right = null;
+  }
+
+  replace (oldUnit, newUnit) {
+    if (this.left === oldUnit) this.left = newUnit;
+    else if (this.right === oldUnit) this.right = newUnit;
+  }
+
   get weight () {
     if (this.arity === 1) return 1;
     if (this.arity === -1) return this.right.weight + 1;
@@ -837,12 +916,21 @@ export class Reduce extends Unit {
     }
   }
 
-  remove (unit) {
+  remove (unit, all) {
     if (isNumber(unit)) {
-      this.units.splice(unit, 1);
+      this.units.splice(unit, all ? this.units.length : 1);
     } else {
       const index = this.units.indexOf(unit);
-      if (index > -1) this.units.splice(index, 1);
+      if (index > -1) this.units.splice(index, all ? this.units.length : 1);
+    }
+  }
+
+  replace (unit, ...newUnits) {
+    if (isNumber(unit)) {
+      this.units.splice(unit, 1, ...newUnits);
+    } else {
+      const index = this.units.indexOf(unit);
+      if (index > -1) this.units.splice(index, 1, ...newUnits);
     }
   }
 
