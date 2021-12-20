@@ -1,7 +1,7 @@
 @twipped/jpath
 ===
 
-`jpath` is an object navigation and data aggregation library based upon [the jsonpath specification](https://goessner.net/articles/JsonPath/), but not explicitly adhering to it. The most notable difference is that script blocks (statements inside parenthesis) are NOT executed within the scripting engine, but rather are evaluated as jpath substatements. Aside from this change, jpath should be fully backwards compatible with jsonpath.
+JPath is an object navigation and data aggregation library based upon [the jsonpath specification](https://goessner.net/articles/JsonPath/), but not explicitly adhering to it. The most notable difference is that script blocks (statements inside parenthesis) are NOT executed within the scripting engine, but rather are evaluated as jpath substatements. Aside from this change, jpath should be fully backwards compatible with jsonpath.
 
 Additionally, `jpath` provides a lot of functionality NOT present in the original jsonpath specification and implementation, such as a broad range of computational operators and collection manipulation, and a syntax for mapping over values.
 
@@ -26,6 +26,54 @@ import { compile } from '@twipped/jpath';
 const fn = compile('$.store.book.*');
 const books = fn(data);
 ```
+
+## API
+
+#### JPath.compile(path, [ options ])
+
+**Parses the JPath string into an evaluatable function**
+
+1. **path** - (string) The jpath to be parsed.
+2. **[options]** - Options object
+  - `operators`: See below
+  - `cache`: An JavaScript Map object to use for caching compiled functions for faster recall. Defaults to null
+
+**Returns:** Function which takes a single data input and returns an array of results.
+**Throws:** `SyntaxError`. The exception will have `line` and `column` properties to indicate where the parsing error occurred.
+
+#### JPath.compileSafe(path, [ options ])
+
+Same as above, except returns the results in the format of `{ fn, error }` rather than throwing on parsing error.
+
+#### JPath.execute(path, data, [ options ])
+
+**Parses the JPath string and immediately executes it against the provided data.**
+
+1. **path** - (string) The jpath to be parsed.
+2. **data** - A JS object or array to be read from
+2. **[options]** - Options object
+  - `operators`: See below
+  - `cache`: An JavaScript Map object to use for caching compiled functions for faster recall. Defaults to an internal singleton.
+
+**Returns:** Function which takes a single data input and returns an array of results.
+**Throws:** `SyntaxError`. The exception will have `line` and `column` properties to indicate where the parsing error occurred.
+
+
+#### JPath.parse(path, [ options ])
+
+**Parses the JPath string into a manipulatable AST**
+
+1. **path** - (string) The jpath to be parsed.
+2. **[options]** - Options object
+  - `operators`: See below
+
+**Returns:** Top level `Statement` object
+**Throws:** `SyntaxError`. The exception will have `line` and `column` properties to indicate where the parsing error occurred.
+
+#### JPath.parseSafe(path, [ options ])
+
+Same as above, except returns the results in the format of `{ ast, error }` rather than throwing on parsing error.
+
 
 ## JPath Syntax
 
@@ -156,6 +204,8 @@ JPath supports a full compliment of operators for manipulating data.
 | ??           | Null Coalesce            | Returns the left side results unless the results are empty, then returns the right side. |
 | !            | Falsey                   | Results in a single `true` if the statement to the right has a truthy value. |
 | !!           | Truthy                   | Results in a single `true` if the statement to the right is empty or contains no truthy values. |
+| int          | Coerce to Number         | Attempts to coerce all values produced by the statement right to numbers.
+| str          | Coerce to String         | Attempts to coerce all values produced by the statement right to strings.
 | is           | Matching Results         | Produces a single `true` if expressions on both sides are strictly identical. |
 | in           | Intersection             | Returns all the values from the left side which exist in the results of the right side expression. |
 | not          | Difference               | Returns all the values from the left side which are NOT in the results of the right side expression. |
@@ -198,3 +248,14 @@ JPath supports a full compliment of operators for manipulating data.
 
 Any regular expression can also be used as an operator. It executes against every string result to the left side of the RegExp, and outputs an array for each item containing the matching string and any capture groups, if the item matches.
 
+### Extending Operators
+
+In addition to these built-ins, additional operators can be provided in the options of all of the base functions. See the [src/operators.js](/Twipped/jpath/blob/main/src/operators.js) file for an example of the structure of the `operators` object. Operators are provided as a keyed object where the key is the operator token and the value is an array of arguments:
+
+1. Operator Arity Type
+  - `-1`: Prefix Unary, function will receive the results of the statement to the right of the operator.
+  - `1`: Postfix Unary, function will receive the results of the statement to the left of the operator.
+  - `0`: Binary, function will receive the results of the left and right statements as the first and second argument, respectively.
+  - `"r"`: N-ary, function operates as a reduction, with the first argument being the result of the previous execution, or first statement.
+2. Operator function. Receives either one or two arrays. Expected to return an array, even if it's empty.
+3. Precedence. Defaults to 0. Higher the number, higher the priority when lexing the path statement.
