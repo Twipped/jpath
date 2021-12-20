@@ -19,19 +19,19 @@
   "author": "Jocelyn Badgley <joc@twipped.com> (http://twipped.com)",
   "license": "MIT",
   "devDependencies": {
-    "@babel/core": "~7.13.15",
-    "@babel/node": "~7.13.13",
-    "@babel/preset-env": "~7.13.15",
-    "babel-eslint": "~10.1.0",
+    "@babel/core": "~7.16.5",
+    "@babel/eslint-parser": "~7.16.5",
+    "@babel/node": "~7.16.5",
+    "@babel/preset-env": "~7.16.5",
     "babel-node": "0.0.1-security",
-    "eslint": "~7.24.0",
-    "eslint-config-twipped": "~4.0.0",
+    "eslint": "~8.5.0",
+    "eslint-config-twipped": "~6.0.0",
     "eslint-plugin-node": "~11.1.0",
-    "eslint-plugin-promise": "~5.1.0",
-    "rollup": "~2.45.1",
+    "eslint-plugin-promise": "~6.0.0",
+    "rollup": "~2.61.1",
     "rollup-plugin-babel": "~4.4.0",
     "rollup-plugin-banner": "~0.2.1",
-    "tap": "~15.0.2"
+    "tap": "~15.1.5"
   },
   "files": [
     "dist",
@@ -41,9 +41,31 @@
     "README.md"
   ],
   "dependencies": {
-    "@twipped/utils": "~3.0.0"
+    "@twipped/utils": "~4.2.0"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "eslintConfig": {
+    "extends": "twipped/node-rollup"
+  },
+  "babel": {
+    "exclude": "node_modules/**",
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "modules": false,
+          "useBuiltIns": "usage",
+          "corejs": {
+            "version": 3,
+            "shippedProposals": true
+          },
+          "targets": {
+            "node": "12"
+          }
+        }
+      ]
+    ]
   }
 }
