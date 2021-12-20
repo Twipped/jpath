@@ -69,11 +69,9 @@ export function verbose (path, data, { operators } = {}) {
 }
 
 export default {
-  tokenize,
   parse,
   parseSafe,
   compile,
   compileSafe,
   execute,
-  verbose,
 };
