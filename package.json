@@ -2,16 +2,16 @@
   "name": "@twipped/jpath",
   "version": "2.0.0",
   "description": "Transform, and selectively extract data from objects via a jsonpath like syntax.",
-  "main": "dist/jpath.cjs.js",
-  "module": "dist/jpath.esm.js",
   "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./mobx": "./src/observable.js",
+    "./taxonomy": "./src/taxonomy.js"
+  },
   "scripts": {
     "test": "tap -R base --no-coverage tests",
     "cover": "tap -R terse --coverage tests",
-    "lint": "eslint './{src,tests}/**/*.{js,jsx}' --fix",
-    "build": "rollup -c",
-    "clean": "rm -rf ./dist ./.nyc_output ./util.js",
-    "start": "npm run lint && npm run clean && npm run build"
+    "lint": "eslint './{src,tests}/**/*.{js,jsx}' --fix"
   },
   "engines": {
     "node": ">=12.10.0"
@@ -23,18 +23,10 @@
     "url": "git://github.com/Twipped/jpath"
   },
   "devDependencies": {
-    "@babel/core": "~7.16.5",
-    "@babel/eslint-parser": "~7.16.5",
-    "@babel/node": "~7.16.5",
-    "@babel/preset-env": "~7.16.5",
-    "babel-node": "0.0.1-security",
     "eslint": "~8.5.0",
     "eslint-config-twipped": "~6.0.0",
     "eslint-plugin-node": "~11.1.0",
     "eslint-plugin-promise": "~6.0.0",
-    "rollup": "~2.61.1",
-    "rollup-plugin-babel": "~4.4.0",
-    "rollup-plugin-banner": "~0.2.1",
     "tap": "~15.1.5"
   },
   "files": [
@@ -52,24 +44,5 @@
   },
   "eslintConfig": {
     "extends": "twipped/node-rollup"
-  },
-  "babel": {
-    "exclude": "node_modules/**",
-    "presets": [
-      [
-        "@babel/preset-env",
-        {
-          "modules": false,
-          "useBuiltIns": "usage",
-          "corejs": {
-            "version": 3,
-            "shippedProposals": true
-          },
-          "targets": {
-            "node": "12"
-          }
-        }
-      ]
-    ]
   }
 }
