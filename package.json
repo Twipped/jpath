@@ -1,6 +1,6 @@
 {
   "name": "@twipped/jpath",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Transform, and selectively extract data from objects via a jsonpath like syntax.",
   "main": "dist/jpath.cjs.js",
   "module": "dist/jpath.esm.js",
