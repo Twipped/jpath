@@ -18,6 +18,10 @@
   },
   "author": "Jocelyn Badgley <joc@twipped.com> (http://twipped.com)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Twipped/jpath"
+  },
   "devDependencies": {
     "@babel/core": "~7.16.5",
     "@babel/eslint-parser": "~7.16.5",
